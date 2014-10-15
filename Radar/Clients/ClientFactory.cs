@@ -10,6 +10,11 @@ namespace Radar.Clients
         {
             Assert.NotNull(configuration, "configuration");
 
+            if (configuration.GetType() == typeof(RepositoryClientConfiguration))
+            {
+                return new RepositoryClient((RepositoryClientConfiguration)configuration);
+            }
+
             return null;
         }
     }

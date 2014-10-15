@@ -1,0 +1,15 @@
+{
+    "poll_interval": 5,
+
+    "clients": [
+        {
+            "type": "repository",
+            "path": "c:/temp/test/repository.git",
+        },
+
+    ],
+
+    "notifications": [
+        { "type": "console" },
+    ]
+}

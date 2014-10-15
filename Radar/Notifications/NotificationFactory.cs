@@ -10,6 +10,11 @@ namespace Radar.Notifications
         {
             Assert.NotNull(configuration, "configuration");
 
+            if (configuration.GetType() == typeof(ConsoleNotificationConfiguration))
+            {
+                return new ConsoleNotification((ConsoleNotificationConfiguration)configuration);
+            }
+
             return null;
         }
     }

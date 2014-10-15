@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 using System.Reflection;
 using System.IO;
 
-using Newtonsoft.Json;
-
 using Radar.Clients;
 using Radar.Notifications;
+using Radar.Util;
 
 namespace Radar
 {
@@ -96,52 +95,34 @@ namespace Radar
         public static Configuration LoadFrom(string path)
         {
             Configuration configuration = new Configuration();
+            ConfigurationParser parser = new ConfigurationParser(System.IO.File.ReadAllText(path));
 
-            string configString = System.IO.File.ReadAllText(path);
-            dynamic configJson = JsonConvert.DeserializeObject(configString);
-
-            foreach (var entry in configJson)
-            {
-                if (entry.Name.Equals("poll_interval"))
-                {
-                    configuration.PollInterval = (int)entry.Value;
-                }
-                else if (entry.Name.Equals("clients"))
-                {
-                    configuration.Clients = LoadClients(configuration, entry.Value);
-                }
-                else if (entry.Name.Equals("notifications"))
-                {
-                    configuration.Notifications = LoadNotifications(configuration, entry.Value);
-                }
-            }
+            parser.TryExecute("poll_interval", (v) => { configuration.PollInterval = (int)v; });
+            parser.Execute("clients", (v) => { configuration.Clients = LoadClients(v); });
+            parser.Execute("notifications", (v) => { configuration.Notifications = LoadNotifications(v); });
 
             return configuration;
         }
 
-        private static IEnumerable<ClientConfiguration> LoadClients(Configuration parent, dynamic input)
+        private static IEnumerable<ClientConfiguration> LoadClients(dynamic configurations)
         {
             List<ClientConfiguration> result = new List<ClientConfiguration>();
 
-            foreach (dynamic json in input)
+            foreach (dynamic c in configurations)
             {
-                string type = json["type"];
-
-                throw new Exception(String.Format("Unknown client type {0}", type));
+                result.Add(ClientConfiguration.LoadFrom(c));
             }
 
             return result;
         }
 
-        private static IEnumerable<NotificationConfiguration> LoadNotifications(Configuration parent, dynamic input)
+        private static IEnumerable<NotificationConfiguration> LoadNotifications(dynamic notifications)
         {
             List<NotificationConfiguration> result = new List<NotificationConfiguration>();
 
-            foreach (dynamic json in input)
+            foreach (dynamic n in notifications)
             {
-                string type = json["type"];
-
-                throw new Exception(String.Format("Unknown notification type {0}", type));
+                result.Add(NotificationConfiguration.LoadFrom(n));
             }
 
             return result;
