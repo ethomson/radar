@@ -18,7 +18,7 @@ namespace Radar
         private readonly Func<ICollection<MonitoredRepository>> _forksRetriever;
         private readonly ConcurrentBag<MonitoredRepository> _monitoredRepositories;
         private readonly Timer _forkTrackingTimer = null;
-        private Timer _branchTrackingTimer = null;
+        private Timer _branchTrackingTimer;
         private readonly TrackingState _state;
 
         public RemoteRepositoryTracker(
@@ -36,6 +36,8 @@ namespace Radar
             _forkEventsNotifier = forkEventsNotifier ?? VoidForkEventsNotifier;
             _snoozedRetriever = snoozedRetriever ?? EmptyRetriever;
             _forksRetriever = forksRetriever ?? EmptyRetriever;
+
+            _state = new TrackingState(_branchEventsNotifier);
 
             _monitoredRepositories = RetrieveRepositoriesToTrack().Result;
 
@@ -57,12 +59,17 @@ namespace Radar
                     {
                         throw new InvalidOperationException();
                     }
+                    _tracer.WriteInformation("Initializing branch monitoring...", interval.TotalSeconds);
+
+                    _tracer.WriteInformation("Retrieving initial state of monitored repositories...", interval.TotalSeconds);
+                    ProbeMonitoredRepositoriesState(null, null);
 
                     _branchTrackingTimer = new Timer(interval.TotalMilliseconds);
                     _branchTrackingTimer.Elapsed += ProbeMonitoredRepositoriesState;
                     _branchTrackingTimer.Start();
 
-                    _tracer.WriteInformation("Started branch monitoring (Will occur every {0} seconds)...", interval.TotalSeconds);
+                    _tracer.WriteInformation("Registered recurrent branch monitoring (will occur every {0} seconds)...", interval.TotalSeconds);
+
 
                     break;
 
@@ -74,12 +81,34 @@ namespace Radar
             }
         }
 
-        private void ProbeMonitoredRepositoriesState(object sender, ElapsedEventArgs e)
+        private async void ProbeMonitoredRepositoriesState(object sender, ElapsedEventArgs e)
         {
             foreach (var monitoredRepository in _monitoredRepositories)
             {
-                _tracer.WriteInformation("Probing repository '{0}'", monitoredRepository.FriendlyName);
+                var mr = monitoredRepository;
+                await ProbeState(mr);
             }
+        }
+
+        private async Task ProbeState(MonitoredRepository monitoredRepository)
+        {
+            _tracer.WriteInformation("Probing repository '{0}'", monitoredRepository.FriendlyName);
+
+            var remoteBranches = await RetrieveRemoteBranches(monitoredRepository);
+
+            _state.Add(monitoredRepository, remoteBranches);
+        }
+
+        private async Task<Dictionary<string, string>> RetrieveRemoteBranches(MonitoredRepository monitoredRepository)
+        {
+            var remoteTips = new Dictionary<string, string>();
+
+            remoteTips = await Task.Run(() =>  _repository.Network.ListReferences(monitoredRepository.Url)
+                .ToDictionary(r => r.CanonicalName, r => r.TargetIdentifier));
+
+            return remoteTips
+                .Where(kvp => kvp.Key.StartsWith("refs/heads/"))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         public void StopTracking(TrackingType type)
@@ -96,6 +125,8 @@ namespace Radar
                     _branchTrackingTimer.Dispose();
                     _branchTrackingTimer = null;
 
+                    _state.Clear();
+
                     _tracer.WriteInformation("Stopped branch monitoring...");
 
                     break;
@@ -106,11 +137,6 @@ namespace Radar
                 default:
                     throw new InvalidOperationException();
             }
-        }
-
-        public TrackingState TrackingState
-        {
-            get { return _state; }
         }
 
         private async Task<ConcurrentBag<MonitoredRepository>> RetrieveRepositoriesToTrack()

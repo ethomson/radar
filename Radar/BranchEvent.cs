@@ -3,13 +3,15 @@ namespace Radar
     public class BranchEvent
     {
         private readonly string _branchName;
-        private readonly string _tipSha;
+        private readonly string _oldSha;
+        private readonly string _newSha;
         private readonly BranchEventKind _kind;
 
-        public BranchEvent(string branchName, string tipSha, BranchEventKind kind)
+        public BranchEvent(string branchName, string oldSha, string newSha, BranchEventKind kind)
         {
             _branchName = branchName;
-            _tipSha = tipSha;
+            _oldSha = oldSha;
+            _newSha = newSha;
             _kind = kind;
         }
 
@@ -23,9 +25,14 @@ namespace Radar
             get { return _kind; }
         }
 
-        public string TipSha
+        public string OldSha
         {
-            get { return _tipSha; }
+            get { return _oldSha; }
+        }
+
+        public string NewSha
+        {
+            get { return _newSha; }
         }
     }
 }

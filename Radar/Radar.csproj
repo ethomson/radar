@@ -50,12 +50,14 @@
     <Compile Include="BranchState.cs" />
     <Compile Include="ForkEvent.cs" />
     <Compile Include="ForkEventKind.cs" />
+    <Compile Include="ITrace.cs" />
     <Compile Include="LambdaEqualityHelper.cs" />
     <Compile Include="MonitoredRepository.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RemoteRepositoryTracker.cs" />
     <Compile Include="RepositoryOrigin.cs" />
+    <Compile Include="Tracer.cs" />
     <Compile Include="TrackingState.cs" />
     <Compile Include="TrackingType.cs" />
   </ItemGroup>
