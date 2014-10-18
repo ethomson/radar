@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LibGit2Sharp;
 
 namespace Radar
 {
@@ -11,17 +12,43 @@ namespace Radar
     {
         static void Main(string[] args)
         {
-            Trace("Launching...");
+            var tracer = new Tracer();
+            tracer.WriteInformation("Launching...");
 
-            ConcurrentBag<MonitoredRepository> repositories = RetrieveRepositoriesToTrack();
 
-            Trace("Monitoring {0} repositories...", repositories.Count);
+            using (var repository = new Repository(@"D:\Dropbox\Dropbox\LibGit2Sharp\Radar.TestRepo"))
+            using (var tracker = new RemoteRepositoryTracker(
+                repository,
+                SnoozedRepositoriesRetriever, ForkedRepositoriesRetriever,
+                forkEventsNotification, branchEventsNotification,
+                tracer))
+            {
+                tracker.StartTracking(TrackingType.BranchMonitoring, TimeSpan.FromSeconds(1));
 
-            var checkDelay = TimeSpan.FromSeconds(1);
+                tracer.WriteInformation("Sleeping...");
+                Thread.Sleep(TimeSpan.FromSeconds(15));
+                tracer.WriteInformation("Disposing...");
+            }
 
-            TrackNewRepositories(repositories, checkDelay);
+            Console.ReadLine();
+            //ConcurrentBag<MonitoredRepository> repositories = RetrieveRepositoriesToTrack();
 
-            TrackChangesThatHaveOccuredInRemoteRepositories(repositories, checkDelay);
+
+            //var checkDelay = TimeSpan.FromSeconds(1);
+
+            //TrackNewRepositories(repositories, checkDelay);
+
+            //TrackChangesThatHaveOccuredInRemoteRepositories(repositories, checkDelay);
+        }
+
+        private static void branchEventsNotification(MonitoredRepository arg1, BranchEvent[] arg2)
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void forkEventsNotification(ForkEvent[] obj)
+        {
+            throw new NotImplementedException();
         }
 
         private static void TrackChangesThatHaveOccuredInRemoteRepositories(ConcurrentBag<MonitoredRepository> repositories, TimeSpan checkDelay)
@@ -83,11 +110,11 @@ namespace Radar
         private static ConcurrentBag<MonitoredRepository> RetrieveRepositoriesToTrack()
         {
             var known = KnownRemotes();
-            var forks = ForkedRepositories();
+            var forks = ForkedRepositoriesRetriever();
 
             var unknwonForks = forks.Except(known);
-            
-            var snoozed = SnoozedRepositories();
+
+            var snoozed = SnoozedRepositoriesRetriever();
 
             var monitoredRepositories = known.Union(unknwonForks).Except(snoozed).Distinct();
             return new ConcurrentBag<MonitoredRepository>(monitoredRepositories);
@@ -96,24 +123,21 @@ namespace Radar
         private static MonitoredRepository[] KnownRemotes()
         {
             // Read the real remotes from the git repository
-            var remotes = new MonitoredRepository[] { 
-                "https://github.com/libgit2/libgit2sharp",  
-                "https://github.com/nulltoken/libgit2sharp",  
-                "https://github.com/ethomson/libgit2sharp",  
-                "https://github.com/trollface/libgit2sharp",  
+            var remotes = new MonitoredRepository[] {
+                "https://github.com/nulltoken/radar.testrepo.git",
         };
 
             return remotes;
         }
 
-        private static MonitoredRepository[] ForkedRepositories()
+        private static MonitoredRepository[] ForkedRepositoriesRetriever()
         {
-            var remotes = new[]
+            var remotes = new MonitoredRepository[]
             {
-                new MonitoredRepository("https://github.com/nulltoken/libgit2sharp", RepositoryOrigin.Fork),
-                new MonitoredRepository("https://github.com/ethomson/libgit2sharp", RepositoryOrigin.Fork),
-                new MonitoredRepository("https://github.com/fork-2/libgit2sharp", RepositoryOrigin.Fork),
-                new MonitoredRepository("https://github.com/fork-1/libgit2sharp", RepositoryOrigin.Fork),
+                //new MonitoredRepository("https://github.com/nulltoken/libgit2sharp", RepositoryOrigin.Fork),
+                //new MonitoredRepository("https://github.com/ethomson/libgit2sharp", RepositoryOrigin.Fork),
+                //new MonitoredRepository("https://github.com/fork-2/libgit2sharp", RepositoryOrigin.Fork),
+                //new MonitoredRepository("https://github.com/fork-1/libgit2sharp", RepositoryOrigin.Fork),
             };
 
             // Bonus pack (maybe) : Dynamically retrieve the network of forks through Octokit
@@ -124,14 +148,27 @@ namespace Radar
             return remotes;
         }
 
-        private static MonitoredRepository[] SnoozedRepositories()
+        private static MonitoredRepository[] SnoozedRepositoriesRetriever()
         {
             var remotes = new[]
             {
-                new MonitoredRepository("https://github.com/trollface/libgit2sharp", RepositoryOrigin.Unknown),  
+                new MonitoredRepository("https://github.com/trollface/radar.testrepo.git", RepositoryOrigin.Unknown),
             };
 
             return remotes;
         }
+    }
+
+    public class Tracer : ITrace
+    {
+        public void WriteInformation(string format, params object[] args)
+        {
+            Console.WriteLine(format, args);
+        }
+    }
+
+    public interface ITrace
+    {
+        void WriteInformation(string format, params object[] args);
     }
 }
