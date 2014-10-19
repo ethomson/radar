@@ -51,6 +51,8 @@
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="Tracking\MonitoredRepository.cs" />
+    <Compile Include="Tracking\RepositoryOrigin.cs" />
     <Compile Include="Util\ITracer.cs" />
     <Compile Include="Notifications\ConsoleNotification.cs" />
     <Compile Include="Notifications\ConsoleNotificationConfiguration.cs" />
@@ -67,6 +69,7 @@
     <Compile Include="Util\ConfigurationException.cs" />
     <Compile Include="Util\ConfigurationParser.cs" />
     <Compile Include="Util\NullTracer.cs" />
+    <Compile Include="Util\LambdaEqualityHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
