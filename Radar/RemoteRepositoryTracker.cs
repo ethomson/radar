@@ -51,40 +51,27 @@ namespace Radar
             var refspecs = events
                 .Where(be => be.Kind != BranchEventKind.Deleted)
                 .Select(createdOrUpdated => string.Format("{1}:refs/radar/{0}/{2}",
-                        monitoredRepository.FriendlyName, createdOrUpdated.CanonicalName, CanonicalToShort(createdOrUpdated.CanonicalName))).ToList();
+                        monitoredRepository.FriendlyName, createdOrUpdated.CanonicalName, createdOrUpdated.Name)).ToList();
 
             if (refspecs.Count > 0)
             {
-                FetchFrom(monitoredRepository, refspecs);
+                FetchCommitsFrom(monitoredRepository, refspecs);
             }
 
             var toBeDeleted = events
                 .Where(be => be.Kind == BranchEventKind.Deleted)
                 .Select(deleted => string.Format("refs/radar/{0}/{1}",
-                        monitoredRepository.FriendlyName, CanonicalToShort(deleted.CanonicalName))).ToList();
+                        monitoredRepository.FriendlyName, deleted.Name)).ToList();
 
             foreach (var refName in toBeDeleted)
             {
-                RemoveBookmarkRef(refName);
+                RemoveBookmarkReference(refName);
             }
 
             _branchEventsNotifier(monitoredRepository, events);
         }
 
-        private void RemoveBookmarkRef(string refName)
-        {
-            _repository.Refs.Remove(refName);
-        }
 
-        private void FetchFrom(MonitoredRepository monitoredRepository, List<string> refspecs)
-        {
-            _repository.Network.Fetch(monitoredRepository.Url, refspecs);
-        }
-
-        private static string CanonicalToShort(string canonicalName)
-        {
-            return canonicalName.Substring("refs/heads/".Length);
-        }
 
         public IEnumerable<MonitoredRepository> MonitoredRepositories
         {
@@ -137,15 +124,12 @@ namespace Radar
 
             var remoteBranches = await RetrieveRemoteBranches(monitoredRepository);
 
-            _state.Add(monitoredRepository, remoteBranches);
+            await _state.Add(monitoredRepository, remoteBranches);
         }
 
         private async Task<Dictionary<string, string>> RetrieveRemoteBranches(MonitoredRepository monitoredRepository)
         {
-            var remoteTips = new Dictionary<string, string>();
-
-            remoteTips = await Task.Run(() =>  _repository.Network.ListReferences(monitoredRepository.Url)
-                .ToDictionary(r => r.CanonicalName, r => r.TargetIdentifier));
+            var remoteTips = await RetrieveRemoteTips(monitoredRepository);
 
             return remoteTips
                 .Where(kvp => kvp.Key.StartsWith("refs/heads/"))
@@ -193,13 +177,7 @@ namespace Radar
             return new ConcurrentBag<MonitoredRepository>(monitoredRepositories);
         }
 
-        private MonitoredRepository[] IdentifyKnownRemotes()
-        {
-            IEnumerable<MonitoredRepository> mrs = _repository.Network.Remotes
-                .Select(r => new MonitoredRepository(r.Url, r.Name, RepositoryOrigin.Remote));
 
-            return mrs.ToArray();
-        }
 
         private void VoidBranchEventsNotifier(MonitoredRepository mr, BranchEvent[] events)
         { }
@@ -216,5 +194,35 @@ namespace Radar
         {
             StopTracking(TrackingType.BranchMonitoring);
         }
+
+        #region Git repository related interactions
+
+        private MonitoredRepository[] IdentifyKnownRemotes()
+        {
+            IEnumerable<MonitoredRepository> mrs = _repository.Network.Remotes
+                .Select(r => new MonitoredRepository(r.Url, r.Name, RepositoryOrigin.Remote));
+
+            return mrs.ToArray();
+        }
+
+        private async Task<Dictionary<string, string>> RetrieveRemoteTips(MonitoredRepository monitoredRepository)
+        {
+            var remoteTips = await Task.Run(() => _repository.Network.ListReferences(monitoredRepository.Url)
+                .ToDictionary(r => r.CanonicalName, r => r.TargetIdentifier));
+
+            return remoteTips;
+        }
+
+        private void FetchCommitsFrom(MonitoredRepository monitoredRepository, IEnumerable<string> refspecs)
+        {
+            _repository.Network.Fetch(monitoredRepository.Url, refspecs);
+        }
+
+        private void RemoveBookmarkReference(string refName)
+        {
+            _repository.Refs.Remove(refName);
+        }
+
+        #endregion
     }
 }

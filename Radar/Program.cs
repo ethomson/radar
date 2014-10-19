@@ -34,7 +34,7 @@ namespace Radar
             Console.WriteLine("Changes detected in {0} monitored repository '{1}'", monitoredRepository.Origin, monitoredRepository.FriendlyName);
             foreach (var branchEvent in events)
             {
-                Console.WriteLine("{0} {1}: old = {2} / new = {3}", branchEvent.Kind, branchEvent.CanonicalName, branchEvent.OldSha, branchEvent.NewSha);
+                Console.WriteLine("{0} branch {1}: old = {2} / new = {3}", branchEvent.Kind, branchEvent.Name, branchEvent.OldSha, branchEvent.NewSha);
             }
         }
 

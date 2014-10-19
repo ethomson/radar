@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Radar
 {
@@ -20,7 +21,7 @@ namespace Radar
             _state.Clear();
         }
 
-        public void Add(MonitoredRepository monitoredRepository, Dictionary<string, string> remoteBranches)
+        public async Task Add(MonitoredRepository monitoredRepository, Dictionary<string, string> remoteBranches)
         {
             if (!_state.ContainsKey(monitoredRepository))
             {
@@ -31,10 +32,10 @@ namespace Radar
             var old = _state[monitoredRepository];
             _state[monitoredRepository] = remoteBranches;
 
-            AnalyzeAndReport(monitoredRepository, old, remoteBranches);
+            await AnalyzeAndReport(monitoredRepository, old, remoteBranches);
         }
 
-        private void AnalyzeAndReport(MonitoredRepository monitoredRepository,
+        private async Task AnalyzeAndReport(MonitoredRepository monitoredRepository,
             Dictionary<string, string> oldState, Dictionary<string, string> newState)
         {
             var newBranches = from tip in newState
@@ -64,7 +65,7 @@ namespace Radar
                 return;
             }
 
-            _branchEventsNotifier(monitoredRepository, events.ToArray());
+            await Task.Run(() => _branchEventsNotifier(monitoredRepository, events.ToArray()));
         }
     }
 }

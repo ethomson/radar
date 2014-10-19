@@ -47,7 +47,6 @@
   <ItemGroup>
     <Compile Include="BranchEvent.cs" />
     <Compile Include="BranchEventKind.cs" />
-    <Compile Include="BranchState.cs" />
     <Compile Include="ForkEvent.cs" />
     <Compile Include="ForkEventKind.cs" />
     <Compile Include="ITrace.cs" />
