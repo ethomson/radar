@@ -51,6 +51,8 @@
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="Tracking\BranchEvent.cs" />
+    <Compile Include="Tracking\BranchEventKind.cs" />
     <Compile Include="Tracking\MonitoredRepository.cs" />
     <Compile Include="Tracking\RepositoryOrigin.cs" />
     <Compile Include="Util\ITracer.cs" />
