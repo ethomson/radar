@@ -10,7 +10,7 @@ namespace Radar
 {
     public class Radar
     {
-        private Object runningLock = new Object();
+        private readonly Object runningLock = new Object();
         private bool running;
         private DateTime? startTime;
 
@@ -62,8 +62,7 @@ namespace Radar
 
                 if (client == null)
                 {
-                    Console.Error.WriteLine(String.Format("Could not find notification for type {0}",
-                        clientConfig.Type));
+                    Console.Error.WriteLine("Could not find notification for type {0}", clientConfig.Type);
                     Environment.Exit(1);
                 }
 
@@ -77,8 +76,7 @@ namespace Radar
 
                 if (notification == null)
                 {
-                    Console.Error.WriteLine(String.Format("Could not find notification for type {0}",
-                        notificationConfig.Type));
+                    Console.Error.WriteLine("Could not find notification for type {0}", notificationConfig.Type);
                     Environment.Exit(1);
                 }
 
@@ -103,9 +101,8 @@ namespace Radar
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteLine(
-                            String.Format("Could not receive messages from {0}: {1} (ignoring)",
-                                client.Configuration.Type, e.Message));
+                        Console.Error.WriteLine("Could not receive messages from {0}: {1} (ignoring)",
+                            client.Configuration.Type, e.Message);
                         continue;
                     }
 
@@ -119,9 +116,8 @@ namespace Radar
                             }
                             catch (Exception e)
                             {
-                                Console.Error.WriteLine(
-                                    String.Format("Could not notify using {0}: {1} (ignoring)",
-                                    notification.Configuration.Type, e.Message));
+                                Console.Error.WriteLine("Could not notify using {0}: {1} (ignoring)",
+                                    notification.Configuration.Type, e.Message);
                                 continue;
                             }
                         }

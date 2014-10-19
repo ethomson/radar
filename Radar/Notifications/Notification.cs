@@ -1,6 +1,4 @@
-﻿using System;
-
-using Radar.Clients;
+﻿using Radar.Clients;
 
 namespace Radar.Notifications
 {

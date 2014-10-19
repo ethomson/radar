@@ -23,7 +23,7 @@ namespace Radar
                 }
 
                 Configuration config = Configuration.LoadFrom(
-                    (configPath != null) ? configPath : Configuration.DefaultConfigurationPath);
+                    configPath ?? Configuration.DefaultConfigurationPath);
 
                 Radar radar = new Radar(config);
 

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Radar
+﻿namespace Radar
 {
     public class Constants
     {
