@@ -32,17 +32,58 @@ namespace Radar
         {
             _repository = repository;
             _tracer = tracer;
-            _branchEventsNotifier = branchEventsNotifier ?? VoidBranchEventsNotifier;
+            _branchEventsNotifier = branchEventsNotifier;
             _forkEventsNotifier = forkEventsNotifier ?? VoidForkEventsNotifier;
             _snoozedRetriever = snoozedRetriever ?? EmptyRetriever;
             _forksRetriever = forksRetriever ?? EmptyRetriever;
 
-            _state = new TrackingState(_branchEventsNotifier);
+            _state = _branchEventsNotifier == null ?
+                new TrackingState(VoidBranchEventsNotifier) : new TrackingState(Intercept);
 
             _monitoredRepositories = RetrieveRepositoriesToTrack().Result;
 
             _tracer.WriteInformation("Monitoring {0} repositories...", _monitoredRepositories.Count);
 
+        }
+
+        private void Intercept(MonitoredRepository monitoredRepository, BranchEvent[] events)
+        {
+            var refspecs = events
+                .Where(be => be.Kind != BranchEventKind.Deleted)
+                .Select(createdOrUpdated => string.Format("{1}:refs/radar/{0}/{2}",
+                        monitoredRepository.FriendlyName, createdOrUpdated.CanonicalName, CanonicalToShort(createdOrUpdated.CanonicalName))).ToList();
+
+            if (refspecs.Count > 0)
+            {
+                FetchFrom(monitoredRepository, refspecs);
+            }
+
+            var toBeDeleted = events
+                .Where(be => be.Kind == BranchEventKind.Deleted)
+                .Select(deleted => string.Format("refs/radar/{0}/{1}",
+                        monitoredRepository.FriendlyName, CanonicalToShort(deleted.CanonicalName))).ToList();
+
+            foreach (var refName in toBeDeleted)
+            {
+                RemoveBookmarkRef(refName);
+            }
+
+            _branchEventsNotifier(monitoredRepository, events);
+        }
+
+        private void RemoveBookmarkRef(string refName)
+        {
+            _repository.Refs.Remove(refName);
+        }
+
+        private void FetchFrom(MonitoredRepository monitoredRepository, List<string> refspecs)
+        {
+            _repository.Network.Fetch(monitoredRepository.Url, refspecs);
+        }
+
+        private static string CanonicalToShort(string canonicalName)
+        {
+            return canonicalName.Substring("refs/heads/".Length);
         }
 
         public IEnumerable<MonitoredRepository> MonitoredRepositories

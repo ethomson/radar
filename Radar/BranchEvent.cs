@@ -2,22 +2,22 @@ namespace Radar
 {
     public class BranchEvent
     {
-        private readonly string _branchName;
+        private readonly string _canonicalName;
         private readonly string _oldSha;
         private readonly string _newSha;
         private readonly BranchEventKind _kind;
 
-        public BranchEvent(string branchName, string oldSha, string newSha, BranchEventKind kind)
+        public BranchEvent(string canonicalName, string oldSha, string newSha, BranchEventKind kind)
         {
-            _branchName = branchName;
+            _canonicalName = canonicalName;
             _oldSha = oldSha;
             _newSha = newSha;
             _kind = kind;
         }
 
-        public string BranchName
+        public string CanonicalName
         {
-            get { return _branchName; }
+            get { return _canonicalName; }
         }
 
         public BranchEventKind Kind
