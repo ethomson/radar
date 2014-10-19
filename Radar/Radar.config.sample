@@ -5,6 +5,23 @@
         {
             "type": "repository",
             "path": "c:/temp/test/repository.git",
+            "forks": [
+                {
+                    "name": "arthurschreiber",
+                    "url": "https://github.com/arthurschreiber/radar.testrepo.git",
+                },
+                {
+                    "name": "nulltoken",
+                    "url": "https://github.com/nulltoken/radar.testrepo.git",
+                },
+                {
+                    "name": "carlosmn",
+                    "url": "https://github.com/carlosmn/radar.testrepo.git",
+                },
+            ],
+            "snoozed": [
+                "https://github.com/trollface/radar.testrepo.git",
+            ]
         },
 
     ],

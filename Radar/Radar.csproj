@@ -50,6 +50,7 @@
     <Compile Include="Clients\Client.cs" />
     <Compile Include="Clients\ClientConfiguration.cs" />
     <Compile Include="Clients\ClientFactory.cs" />
+    <Compile Include="Clients\ForkConfiguration.cs" />
     <Compile Include="Clients\RepositoryClient.cs" />
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
     <Compile Include="Event.cs" />
