@@ -57,6 +57,7 @@
     <Compile Include="Tracking\BranchEvent.cs" />
     <Compile Include="Tracking\BranchEventKind.cs" />
     <Compile Include="Tracking\MonitoredRepository.cs" />
+    <Compile Include="Tracking\RemoteRepositoryTracker.cs" />
     <Compile Include="Tracking\RepositoryOrigin.cs" />
     <Compile Include="Util\ITracer.cs" />
     <Compile Include="Notifications\ConsoleNotification.cs" />
