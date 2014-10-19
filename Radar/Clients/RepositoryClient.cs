@@ -6,6 +6,7 @@ namespace Radar.Clients
     public class RepositoryClient : Client
     {
         private readonly RepositoryClientConfiguration configuration;
+        private ITracer tracer;
 
         private readonly Object runningLock = new Object();
         private bool running;
@@ -13,6 +14,7 @@ namespace Radar.Clients
         public RepositoryClient(RepositoryClientConfiguration configuration)
         {
             this.configuration = configuration;
+            this.tracer = new NullTracer();
         }
 
         public ClientConfiguration Configuration
@@ -20,6 +22,19 @@ namespace Radar.Clients
             get
             {
                 return configuration;
+            }
+        }
+
+        public ITracer Tracer
+        {
+            get
+            {
+                return tracer;
+            }
+
+            set
+            {
+                tracer = value;
             }
         }
 

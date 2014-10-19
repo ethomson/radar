@@ -51,11 +51,13 @@
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="Util\ITracer.cs" />
     <Compile Include="Notifications\ConsoleNotification.cs" />
     <Compile Include="Notifications\ConsoleNotificationConfiguration.cs" />
     <Compile Include="Notifications\Notification.cs" />
     <Compile Include="Notifications\NotificationConfiguration.cs" />
     <Compile Include="Notifications\NotificationFactory.cs" />
+    <Compile Include="Util\ConsoleTracer.cs" />
     <Compile Include="Util\Assert.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
@@ -64,6 +66,7 @@
     <Compile Include="Radar.cs" />
     <Compile Include="Util\ConfigurationException.cs" />
     <Compile Include="Util\ConfigurationParser.cs" />
+    <Compile Include="Util\NullTracer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

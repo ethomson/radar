@@ -10,6 +10,7 @@ namespace Radar
 {
     public class Radar
     {
+        private ITracer tracer;
         private readonly Object runningLock = new Object();
         private bool running;
         private DateTime? startTime;
@@ -22,12 +23,26 @@ namespace Radar
             Assert.NotNull(config, "config");
 
             Configuration = config;
+            this.tracer = new NullTracer();
         }
 
         public Configuration Configuration
         {
             get;
             private set;
+        }
+
+        public ITracer Tracer
+        {
+            get
+            {
+                return tracer;
+            }
+
+            set
+            {
+                tracer = value;
+            }
         }
 
         public bool Running
@@ -62,10 +77,11 @@ namespace Radar
 
                 if (client == null)
                 {
-                    Console.Error.WriteLine("Could not find notification for type {0}", clientConfig.Type);
+                    tracer.WriteError("Could not find notification for type {0}", clientConfig.Type);
                     Environment.Exit(1);
                 }
 
+                client.Tracer = tracer;
                 client.Start();
                 clients.Add(client);
             }
@@ -76,7 +92,7 @@ namespace Radar
 
                 if (notification == null)
                 {
-                    Console.Error.WriteLine("Could not find notification for type {0}", notificationConfig.Type);
+                    tracer.WriteError("Could not find notification for type {0}", notificationConfig.Type);
                     Environment.Exit(1);
                 }
 
@@ -101,7 +117,7 @@ namespace Radar
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteLine("Could not receive messages from {0}: {1} (ignoring)",
+                        tracer.WriteError("Could not receive messages from {0}: {1} (ignoring)",
                             client.Configuration.Type, e.Message);
                         continue;
                     }
@@ -116,7 +132,7 @@ namespace Radar
                             }
                             catch (Exception e)
                             {
-                                Console.Error.WriteLine("Could not notify using {0}: {1} (ignoring)",
+                                tracer.WriteError("Could not notify using {0}: {1} (ignoring)",
                                     notification.Configuration.Type, e.Message);
                                 continue;
                             }
