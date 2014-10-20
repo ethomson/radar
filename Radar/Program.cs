@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 using Radar.Util;
 
 namespace Radar
@@ -32,6 +33,10 @@ namespace Radar
 
                 radar.Tracer = tracer;
                 radar.Start();
+
+                tracer.WriteInformation("Sleeping for some minutes...");
+                Thread.Sleep(TimeSpan.FromSeconds(60 * 5));
+
                 radar.Stop();
             }
             catch(Exception e)
