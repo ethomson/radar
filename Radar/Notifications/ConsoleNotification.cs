@@ -30,8 +30,12 @@ namespace Radar.Notifications
             TextWriter fh = configuration.Stream == ConsoleNotificationConfiguration.ConsoleStream.Output ?
                 Console.Out : Console.Error;
 
-            fh.WriteLine("{0}: {1} {2} <{3}>: {4} {5} {6} [{7}]",
-                client.Name, e.Time, e.Identity.Name, e.Identity.Email, e.RepositoryFriendlyName, e.Kind, e.BranchName, string.Join(", ", e.Shas));
+            string content = e.Content ??
+                String.Format("{0} {1} {2} [{3}]",
+                e.RepositoryFriendlyName, e.Kind, e.BranchName, string.Join(", ", e.Shas));
+
+            fh.WriteLine("{0}: {1} {2} <{3}>: {4}",
+                client.Name, e.Time, e.Identity.Name, e.Identity.Email, content);
         }
 
         public void Stop()

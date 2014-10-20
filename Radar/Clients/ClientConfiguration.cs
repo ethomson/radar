@@ -17,6 +17,10 @@ namespace Radar.Clients
             {
                 return RepositoryClientConfiguration.LoadFrom(config);
             }
+            else if (type.Equals("dummy"))
+            {
+                return DummyClientConfiguration.LoadFrom(config);
+            }
 
             throw new Exception(String.Format("Configuration error: unknown client type {0}", type));
         }

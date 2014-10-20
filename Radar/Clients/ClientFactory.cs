@@ -12,6 +12,10 @@ namespace Radar.Clients
             {
                 return new RepositoryClient((RepositoryClientConfiguration)configuration);
             }
+            else if (configuration.GetType() == typeof(DummyClientConfiguration))
+            {
+                return new DummyClient((DummyClientConfiguration)configuration);
+            }
 
             return null;
         }
