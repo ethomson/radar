@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 
 using Radar.Clients;
+using Radar.Images;
 using Radar.Notifications;
 using Radar.Util;
 
@@ -24,6 +25,7 @@ namespace Radar
 
             Configuration = config;
             this.tracer = new NullTracer();
+            ImageManager = new ImageManager(config);
         }
 
         public Configuration Configuration
@@ -43,6 +45,12 @@ namespace Radar
             {
                 tracer = value;
             }
+        }
+
+        public ImageManager ImageManager
+        {
+            get;
+            private set;
         }
 
         public bool Running
@@ -77,7 +85,7 @@ namespace Radar
 
                 if (client == null)
                 {
-                    tracer.WriteError("Could not find notification for type {0}", clientConfig.Type);
+                    tracer.WriteError("Could not find client for type {0}", clientConfig.Type);
                     Environment.Exit(1);
                 }
 
@@ -88,7 +96,7 @@ namespace Radar
 
             foreach (NotificationConfiguration notificationConfig in Configuration.Notifications)
             {
-                Notification notification = NotificationFactory.NewNotification(notificationConfig);
+                Notification notification = NotificationFactory.NewNotification(this, notificationConfig);
 
                 if (notification == null)
                 {
@@ -96,7 +104,7 @@ namespace Radar
                     Environment.Exit(1);
                 }
 
-                notifications.Add(NotificationFactory.NewNotification(notificationConfig));
+                notifications.Add(notification);
             }
 
             lock (runningLock)
@@ -104,6 +112,8 @@ namespace Radar
                 this.running = true;
                 this.startTime = DateTime.Now;
             }
+
+            new Thread(ImageManager.Start).Start();
 
             while (Running)
             {
@@ -159,6 +169,8 @@ namespace Radar
         {
             lock (runningLock)
             {
+                ImageManager.Stop();
+
                 foreach (Notification notification in notifications)
                 {
                     notification.Stop();

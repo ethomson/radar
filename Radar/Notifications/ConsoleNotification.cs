@@ -10,8 +10,9 @@ namespace Radar.Notifications
     {
         private ConsoleNotificationConfiguration configuration;
 
-        public ConsoleNotification(ConsoleNotificationConfiguration configuration)
+        public ConsoleNotification(Radar radar, ConsoleNotificationConfiguration configuration)
         {
+            Assert.NotNull(radar, "radar");
             Assert.NotNull(configuration, "configuration");
 
             this.configuration = configuration;
