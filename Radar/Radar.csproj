@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="LibGit2Sharp">
+      <HintPath>..\packages\LibGit2Sharp.0.19.0.0\lib\net40\LibGit2Sharp.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.6.0.5\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -47,15 +50,23 @@
     <Compile Include="Clients\Client.cs" />
     <Compile Include="Clients\ClientConfiguration.cs" />
     <Compile Include="Clients\ClientFactory.cs" />
+    <Compile Include="Clients\ForkConfiguration.cs" />
     <Compile Include="Clients\RepositoryClient.cs" />
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
     <Compile Include="Event.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="Tracking\BranchEvent.cs" />
+    <Compile Include="Tracking\BranchEventKind.cs" />
+    <Compile Include="Tracking\MonitoredRepository.cs" />
+    <Compile Include="Tracking\RemoteRepositoryTracker.cs" />
+    <Compile Include="Tracking\RepositoryOrigin.cs" />
+    <Compile Include="Util\ITracer.cs" />
     <Compile Include="Notifications\ConsoleNotification.cs" />
     <Compile Include="Notifications\ConsoleNotificationConfiguration.cs" />
     <Compile Include="Notifications\Notification.cs" />
     <Compile Include="Notifications\NotificationConfiguration.cs" />
     <Compile Include="Notifications\NotificationFactory.cs" />
+    <Compile Include="Util\ConsoleTracer.cs" />
     <Compile Include="Util\Assert.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
@@ -64,12 +75,22 @@
     <Compile Include="Radar.cs" />
     <Compile Include="Util\ConfigurationException.cs" />
     <Compile Include="Util\ConfigurationParser.cs" />
+    <Compile Include="Util\NullTracer.cs" />
+    <Compile Include="Util\LambdaEqualityHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+if not exist "$(TargetDir)NativeBinaries" md "$(TargetDir)NativeBinaries"
+if not exist "$(TargetDir)NativeBinaries\x86" md "$(TargetDir)NativeBinaries\x86"
+xcopy /s /y /d "$(SolutionDir)packages\LibGit2Sharp.0.19.0.0\lib\net40\NativeBinaries\x86\*.*" "$(TargetDir)NativeBinaries\x86"
+if not exist "$(TargetDir)NativeBinaries\amd64" md "$(TargetDir)NativeBinaries\amd64"
+xcopy /s /y /d "$(SolutionDir)packages\LibGit2Sharp.0.19.0.0\lib\net40\NativeBinaries\amd64\*.*" "$(TargetDir)NativeBinaries\amd64"</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

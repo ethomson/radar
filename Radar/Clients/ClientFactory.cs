@@ -1,6 +1,4 @@
-﻿using System;
-
-using Radar.Util;
+﻿using Radar.Util;
 
 namespace Radar.Clients
 {

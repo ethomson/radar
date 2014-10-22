@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
+using Radar.Util;
 
 namespace Radar
 {
@@ -7,6 +9,8 @@ namespace Radar
     {
         public static int Main(string[] args)
         {
+            var tracer = new ConsoleTracer();
+
             try
             {
                 string configPath = null;
@@ -23,16 +27,21 @@ namespace Radar
                 }
 
                 Configuration config = Configuration.LoadFrom(
-                    (configPath != null) ? configPath : Configuration.DefaultConfigurationPath);
+                    configPath ?? Configuration.DefaultConfigurationPath);
 
                 Radar radar = new Radar(config);
 
+                radar.Tracer = tracer;
                 radar.Start();
+
+                tracer.WriteInformation("Sleeping for some minutes...");
+                Thread.Sleep(TimeSpan.FromSeconds(60 * 5));
+
                 radar.Stop();
             }
             catch(Exception e)
             {
-                Console.Error.WriteLine("{0}: {1}", ProgramName, e.Message);
+                tracer.WriteError("{0}: {1}", ProgramName, e.Message);
             }
 
             return 0;
