@@ -15,8 +15,11 @@ namespace Radar.Tracking
         private readonly Func<ICollection<MonitoredRepository>> snoozedRetriever;
         private readonly Func<ICollection<MonitoredRepository>> forksRetriever;
         private readonly ConcurrentBag<MonitoredRepository> monitoredRepositories;
-        private readonly ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>> state =
-            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
+
+        private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> old =
+            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+        private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> current =
+            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
 
         public RemoteRepositoryTracker(
             IRepository repository,
@@ -35,34 +38,11 @@ namespace Radar.Tracking
             this.tracer.WriteInformation("Monitoring {0} repositories...", monitoredRepositories.Count);
 
             tracer.WriteInformation("Retrieving initial state of monitored repositories...");
-            ProbeMonitoredRepositoriesState();
-        }
 
-        private void Synchronise(MonitoredRepository monitoredRepository, BranchEvent[] events)
-        {
-            var refspecs = events
-                .Where(be => be.Kind != BranchEventKind.Deleted)
-                .Select(createdOrUpdated => string.Format("{1}:refs/radar/{0}/{2}",
-                        monitoredRepository.FriendlyName, createdOrUpdated.CanonicalName, createdOrUpdated.Name)).ToList();
+            var eventsRetrieval = (from mr in monitoredRepositories
+                                     select ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-            if (refspecs.Count > 0)
-            {
-                tracer.WriteInformation("Retrieving commits from repository '{0}'", monitoredRepository.FriendlyName);
-
-                FetchCommitsFrom(monitoredRepository, refspecs);
-            }
-
-            var toBeDeleted = events
-                .Where(be => be.Kind == BranchEventKind.Deleted)
-                .Select(deleted => string.Format("refs/radar/{0}/{1}",
-                        monitoredRepository.FriendlyName, deleted.Name)).ToList();
-
-            foreach (var refName in toBeDeleted)
-            {
-                tracer.WriteInformation("Dropping bookmark reference '{0}'", refName);
-
-                RemoveBookmarkReference(refName);
-            }
+            Task.WhenAll(eventsRetrieval);
         }
 
         public IEnumerable<MonitoredRepository> MonitoredRepositories
@@ -70,65 +50,81 @@ namespace Radar.Tracking
             get { return monitoredRepositories.ToArray(); }
         }
 
-        public IDictionary<MonitoredRepository, BranchEvent[]> ProbeMonitoredRepositoriesState()
+        public async Task<IEnumerable<Event>> ProbeMonitoredRepositoriesState(MonitoredRepository mr)
         {
-            var events = new Dictionary<MonitoredRepository, BranchEvent[]>();
-
-            foreach (var monitoredRepository in monitoredRepositories)
+            return await Task.Run(() =>
             {
-                BranchEvent[] branchEvents = ProbeState(monitoredRepository);
+                MarkBookmarksOld(mr);
+                var tips = RetrieveRemoteBranches(mr);
+                CreateNewBookmarksFrom(mr, tips);
+                var branchEvents = Analyze(mr);
 
-                if (branchEvents.Length == 0)
-                {
-                    continue;
-                }
-
-                Synchronise(monitoredRepository, branchEvents);
-                events.Add(monitoredRepository, branchEvents);
-            }
-
-            return events;
+                return Synchronise(mr, branchEvents);
+            });
         }
 
-        private BranchEvent[] ProbeState(MonitoredRepository monitoredRepository)
+        private void MarkBookmarksOld(MonitoredRepository mr)
         {
-            tracer.WriteInformation("Probing repository '{0}'", monitoredRepository.FriendlyName);
-
-            var remoteBranches = RetrieveRemoteBranches(monitoredRepository);
-
-            return Analyze(monitoredRepository, remoteBranches);
+            old.ReplaceOrAdd(mr, current.GetOrDefault(mr));
+            current.ReplaceOrAdd(mr, new Dictionary<string, string>());
         }
 
-        private BranchEvent[] Analyze(MonitoredRepository monitoredRepository, Dictionary<string, string> remoteBranches)
+        private void CreateNewBookmarksFrom(MonitoredRepository mr, Dictionary<string, string> tips)
         {
-            if (!state.ContainsKey(monitoredRepository))
+            current.ReplaceOrAdd(mr, tips);
+        }
+
+        private Dictionary<string, string> RetrieveRemoteBranches(MonitoredRepository monitoredRepository)
+        {
+            tracer.WriteInformation("Retrieving remote tips from repository '{0}'", monitoredRepository.FriendlyName);
+
+            var remoteTips = RetrieveRemoteTips(monitoredRepository);
+
+            return remoteTips
+                .Where(kvp => IsHeadOrTag(kvp.Key))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
+
+        private bool IsHeadOrTag(string refName)
+        {
+            if (refName.StartsWith("refs/heads/"))
             {
-                state.GetOrAdd(monitoredRepository, remoteBranches);
-                return new BranchEvent[] {};
+                return true;
             }
 
-            var old = state[monitoredRepository];
-            state[monitoredRepository] = remoteBranches;
+            if (refName.StartsWith("refs/tags/"))
+            {
+                return true;
+            }
 
-            var newBranches = from tip in remoteBranches
-                where !old.ContainsKey(tip.Key)
-                select tip;
+            return false;
+        }
 
-            var modifiedBranches = from newTip in remoteBranches
-                where old.ContainsKey(newTip.Key) && old[newTip.Key] != newTip.Value
-                select newTip;
+        private BranchEvent[] Analyze(MonitoredRepository monitoredRepository)
+        {
+            var oldState = old[monitoredRepository];
+            var currentState = current[monitoredRepository];
 
-            var droppedBranches = from tip in old
-                where !remoteBranches.ContainsKey(tip.Key)
-                select tip;
+            var newBranches = from tip in currentState
+                              where !oldState.ContainsKey(tip.Key)
+                              select tip;
 
+            var modifiedBranches = from newTip in currentState
+                                   where oldState.ContainsKey(newTip.Key) && oldState[newTip.Key] != newTip.Value
+                                   select newTip;
+
+            var droppedBranches = from tip in oldState
+                                  where !currentState.ContainsKey(tip.Key)
+                                  select tip;
 
             var events = new List<BranchEvent>();
 
             events.AddRange(newBranches
                 .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created)));
+
             events.AddRange(modifiedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, old[kvp.Key], kvp.Value, BranchEventKind.Updated)));
+                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated)));
+
             events.AddRange(droppedBranches
                 .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted)));
 
@@ -137,18 +133,89 @@ namespace Radar.Tracking
                 return new BranchEvent[] { };
             }
 
-            tracer.WriteInformation("Changes have been detected in repository '{0}'", monitoredRepository.FriendlyName);
+            MarkCreationOfBranchesFromKnownCommits(events);
+            MarkUpdationOfBranchesToKnownCommits(events);
 
             return events.ToArray();
         }
 
-        private Dictionary<string, string> RetrieveRemoteBranches(MonitoredRepository monitoredRepository)
+        private void MarkCreationOfBranchesFromKnownCommits(IEnumerable<BranchEvent> branchEvents)
         {
-            var remoteTips = RetrieveRemoteTips(monitoredRepository);
+            foreach (var branchEvent in branchEvents.Where(b => !b.IsFullyAnalyzed && b.Kind == BranchEventKind.Created))
+            {
+                if (!IsCommitLocallyKnown(branchEvent.NewSha))
+                {
+                    continue;
+                }
 
-            return remoteTips
-                .Where(kvp => kvp.Key.StartsWith("refs/heads/"))
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                branchEvent.MarkAsNewBranchFromKnownCommit();
+            }
+        }
+
+        private void MarkUpdationOfBranchesToKnownCommits(IEnumerable<BranchEvent> branchEvents)
+        {
+            foreach (var branchEvent in branchEvents.Where(b => !b.IsFullyAnalyzed && b.Kind == BranchEventKind.Updated))
+            {
+                if (!IsCommitLocallyKnown(branchEvent.NewSha))
+                {
+                    continue;
+                }
+
+                branchEvent.MarkAsUpdatedBranchToAKnownCommit();
+            }
+        }
+
+        private IEnumerable<Event> Synchronise(MonitoredRepository mr, BranchEvent[] branchEvents)
+        {
+            RemoveReferences(string.Format("refs/radar/{0}/*", mr.FriendlyName));
+
+            var events = new List<Event>();
+
+            var refspecs = branchEvents
+                .Where(be => be.Kind != BranchEventKind.Deleted)
+                .Select(createdOrUpdated => string.Format("{0}:refs/radar/{1}/{0}",
+                        createdOrUpdated.CanonicalName, mr.FriendlyName)).ToList();
+
+            if (refspecs.Count > 0)
+            {
+                tracer.WriteInformation("Retrieving commits from repository '{0}'", mr.FriendlyName);
+
+                FetchCommitsFrom(mr, refspecs);
+            }
+
+            var toBeDeleted = branchEvents
+                .Where(be => be.Kind == BranchEventKind.Deleted);
+
+            foreach (var branchEvent in toBeDeleted)
+            {
+                var ev = branchEvent.BuildEvent(mr);
+                ev.Time = DateTime.Now;
+
+                // TODO: Which identity should we use when a branch is deleted
+                ev.Identity = new Identity{ Name = "Unknown", Email = "dont@know.com" };
+
+                events.Add(ev);
+            }
+
+            foreach (var branchEvent in branchEvents.Where(b => !b.IsFullyAnalyzed))
+            {
+                var result = RetrieveListOfCommittedShas(branchEvent);
+
+                branchEvent.MarkWithNewCommits(result.Item1, result.Item2);
+            }
+
+            foreach (var branchEvent in branchEvents.Where(be => be.Kind != BranchEventKind.Deleted))
+            {
+                var ev = branchEvent.BuildEvent(mr);
+
+                // TODO: Retrieve identity of committers and commit times
+                ev.Time = DateTime.Now;
+                ev.Identity = new Identity { Name = "S. Omeone", Email = "someone@somewhere.com" };
+
+                events.Add(ev);
+            }
+
+            return events;
         }
 
         private async Task<ConcurrentBag<MonitoredRepository>> RetrieveRepositoriesToTrack()
@@ -171,6 +238,32 @@ namespace Radar.Tracking
 
         #region Git repository related interactions
 
+        private Tuple<bool, string[]> RetrieveListOfCommittedShas(BranchEvent branchEvent)
+        {
+            var @old = repository.Lookup<Commit>(branchEvent.OldSha);
+            var @new = repository.Lookup<Commit>(branchEvent.NewSha);
+
+            var merge = repository.Commits.FindMergeBase(@old, @new);
+            var shas = repository.Commits.QueryBy(new CommitFilter {Since = @new, Until = @old}).Select(c => c.Sha).ToArray();
+
+            return new Tuple<bool, string[]>(merge == null || merge != old, shas);
+        }
+
+        private bool IsCommitLocallyKnown(string sha)
+        {
+            return repository.Lookup<Commit>(sha) != null;
+        }
+
+        private void RemoveReferences(string glob)
+        {
+            var refs = repository.Refs.FromGlob(glob);
+
+            foreach (var @ref in refs)
+            {
+                repository.Refs.Remove(@ref);
+            }
+        }
+
         private MonitoredRepository[] IdentifyKnownRemotes()
         {
             IEnumerable<MonitoredRepository> mrs = repository.Network.Remotes
@@ -190,11 +283,6 @@ namespace Radar.Tracking
         private void FetchCommitsFrom(MonitoredRepository monitoredRepository, IEnumerable<string> refspecs)
         {
             repository.Network.Fetch(monitoredRepository.Url, refspecs);
-        }
-
-        private void RemoveBookmarkReference(string refName)
-        {
-            repository.Refs.Remove(refName);
         }
 
         #endregion
