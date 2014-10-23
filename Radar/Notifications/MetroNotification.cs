@@ -85,9 +85,9 @@ namespace Radar.Notifications
                     Directory.CreateDirectory(Path.GetDirectoryName(filename));
                     Resources.Instance.ExtractResourceToFile("PersonPlaceholder", filename);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    // TODO: log...
+                    radar.Tracer.WriteError("Could not install shell link: {0}", e.Message);
                 }
             }
 
@@ -130,7 +130,7 @@ namespace Radar.Notifications
             toastNode.AppendChild(audio);
 
             ToastNotification toast = new ToastNotification(toastXml);
-            MetroNotificationCallbacks callbacks = new MetroNotificationCallbacks();
+            MetroNotificationCallbacks callbacks = new MetroNotificationCallbacks(radar);
 
             toast.Activated += callbacks.Activated;
             toast.Dismissed += callbacks.Dismissed;
@@ -145,6 +145,13 @@ namespace Radar.Notifications
 
         private class MetroNotificationCallbacks
         {
+            private readonly Radar radar;
+
+            public MetroNotificationCallbacks(Radar radar)
+            {
+                this.radar = radar;
+            }
+
             public void Activated(ToastNotification sender, object args)
             {
             }
@@ -155,7 +162,7 @@ namespace Radar.Notifications
 
             public void Failed(ToastNotification sender, ToastFailedEventArgs args)
             {
-                Console.Error.WriteLine("Win8 Toast Notification Failed: {0}", args.ErrorCode.Message);
+                radar.Tracer.WriteError("Win8 Toast Notification Failed: {0}", args.ErrorCode.Message);
             }
         }
     }

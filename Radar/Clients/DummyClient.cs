@@ -7,13 +7,18 @@ namespace Radar.Clients
 {
     public class DummyClient : Client
     {
+        private readonly Radar radar;
         private readonly DummyClientConfiguration configuration;
 
         private readonly Object runningLock = new Object();
         private volatile bool running;
 
-        public DummyClient(DummyClientConfiguration configuration)
+        public DummyClient(Radar radar, DummyClientConfiguration configuration)
         {
+            Assert.NotNull(radar, "radar");
+            Assert.NotNull(configuration, "configuration");
+
+            this.radar = radar;
             this.configuration = configuration;
         }
 
@@ -33,8 +38,6 @@ namespace Radar.Clients
             }
         }
 
-        public ITracer Tracer { get; set; }
-
         public string Name
         {
             get
@@ -51,7 +54,8 @@ namespace Radar.Clients
         public IEnumerable<Event> RecentEvents()
         {
             List<Event> events = new List<Event>();
-            events.Add(new Event
+            events.Add(new Event()
+
             {
                 Time = DateTime.Now,
                 Identity = new Identity { Name = "Test User", Email = "test@test.test" },

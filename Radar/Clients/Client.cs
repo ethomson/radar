@@ -6,7 +6,6 @@ namespace Radar.Clients
     public interface Client
     {
         ClientConfiguration Configuration { get; }
-        ITracer Tracer { get; set; }
         bool Running { get; }
         string Name { get; }
         void Start();

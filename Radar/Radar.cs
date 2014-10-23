@@ -81,7 +81,7 @@ namespace Radar
 
             foreach (ClientConfiguration clientConfig in Configuration.Clients)
             {
-                Client client = ClientFactory.NewClient(clientConfig);
+                Client client = ClientFactory.NewClient(this, clientConfig);
 
                 if (client == null)
                 {
@@ -89,7 +89,6 @@ namespace Radar
                     Environment.Exit(1);
                 }
 
-                client.Tracer = tracer;
                 client.Start();
                 clients.Add(client);
             }
