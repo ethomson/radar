@@ -17,9 +17,9 @@ namespace Radar.Tracking
         private readonly ConcurrentBag<MonitoredRepository> monitoredRepositories;
 
         private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> old =
-            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
         private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> current =
-            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
 
         public RemoteRepositoryTracker(
             Radar radar,
