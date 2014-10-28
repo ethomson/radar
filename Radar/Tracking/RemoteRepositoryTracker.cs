@@ -45,7 +45,7 @@ namespace Radar.Tracking
             var eventsRetrieval = (from mr in monitoredRepositories
                                      select ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-            Task.WhenAll(eventsRetrieval);
+            Task.WhenAll(eventsRetrieval).Wait();
         }
 
         public IEnumerable<MonitoredRepository> MonitoredRepositories
