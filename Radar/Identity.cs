@@ -8,4 +8,13 @@ namespace Radar
         public string Email { get; internal set; }
         public Uri Image { get; internal set; }
     }
+
+    public class NullIdentity : Identity
+    {
+        public NullIdentity()
+        {
+            Name = "Unknown";
+            Email = "dont@know.com";
+        }
+    }
 }
