@@ -40,7 +40,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\DirectoryHelper.cs" />
     <Compile Include="MonitoredRepositoryFixture.cs" />
+    <Compile Include="RemoteRepositoryTrackerFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
