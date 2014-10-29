@@ -80,14 +80,14 @@ namespace Radar.Clients
             }
         }
 
-        public IEnumerable<Event> RecentEvents()
+        public IEnumerable<IEvent> RecentEvents()
         {
             lock (runningLock)
             {
                 var eventsRetrieval = (from mr in tracker.MonitoredRepositories
                     select tracker.ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-                IEnumerable<Event>[] events = Task.WhenAll(eventsRetrieval).Result;
+                IEnumerable<IEvent>[] events = Task.WhenAll(eventsRetrieval).Result;
 
                 return events.SelectMany(evs => evs);
             }

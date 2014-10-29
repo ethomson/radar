@@ -53,7 +53,7 @@ namespace Radar.Tracking
             get { return monitoredRepositories.ToArray(); }
         }
 
-        public async Task<IEnumerable<Event>> ProbeMonitoredRepositoriesState(MonitoredRepository mr)
+        public async Task<IEnumerable<IEvent>> ProbeMonitoredRepositoriesState(MonitoredRepository mr)
         {
             return await Task.Run(() =>
             {
@@ -163,7 +163,7 @@ namespace Radar.Tracking
             }
         }
 
-        private IEnumerable<Event> Synchronise(MonitoredRepository mr, BranchEvent[] branchEvents)
+        private IEnumerable<IEvent> Synchronise(MonitoredRepository mr, BranchEvent[] branchEvents)
         {
             RemoveReferences(string.Format("refs/radar/{0}/*", mr.FriendlyName));
 

@@ -122,7 +122,7 @@ namespace Radar.Tracking
             ev.Time = sign.Item2;
         }
 
-        public Event BuildEvent(MonitoredRepository mr)
+        public IEvent BuildEvent(MonitoredRepository mr)
         {
             Assert.IsTrue(isFullyAnalyzed, "isFullyAnalyzed");
             Assert.IsTrue(refinedEventKind != EventKind.PendingAnalysis, "refinedEventKind != EventKind.PendingAnalysis");
