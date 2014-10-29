@@ -211,13 +211,32 @@ namespace Radar.Tracking
 
         private Tuple<bool, string[]> RetrieveListOfCommittedShas(BranchEvent branchEvent)
         {
-            var @old = repository.Lookup<Commit>(branchEvent.OldSha);
+            string @oldSha;
+
+            if (branchEvent.OldSha == null)
+            {
+                @oldSha = RetrieveFirstKnownCommitShaOnBranch(branchEvent.NewSha);
+            }
+            else
+            {
+                @oldSha = branchEvent.OldSha;
+            }
+
+            var @old = repository.Lookup<Commit>(@oldSha);
             var @new = repository.Lookup<Commit>(branchEvent.NewSha);
 
             var merge = repository.Commits.FindMergeBase(@old, @new);
             var shas = repository.Commits.QueryBy(new CommitFilter {Since = @new, Until = @old}).Select(c => c.Sha).ToArray();
 
             return new Tuple<bool, string[]>(merge == null || merge != old, shas);
+        }
+
+        private string RetrieveFirstKnownCommitShaOnBranch(string newBranchCommitSha)
+        {
+            var newCommits = repository.Commits
+                .QueryBy(new CommitFilter { Since = newBranchCommitSha, Until = repository.Branches });
+
+            return newCommits.Last().Parents.First().Sha;
         }
 
         private Tuple<Identity, DateTime> CommitSignatureRetriever(string commitSha)
