@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Radar.Util;
 
 namespace Radar.Tracking
@@ -8,16 +10,22 @@ namespace Radar.Tracking
         private readonly string oldSha;
         private readonly string newSha;
         private readonly BranchEventKind kind;
+        private readonly Func<string, Tuple<Identity, DateTime>> commitSignatureRetriever;
         private bool isFullyAnalyzed;
-        private EventKind _eventKind;
         private string[] shas = { };
+        private readonly Event ev = new Event();
 
-        public BranchEvent(string canonicalName, string oldSha, string newSha, BranchEventKind kind)
+        public BranchEvent(
+            string canonicalName, string oldSha, string newSha,
+            BranchEventKind kind, Func<string, Tuple<Identity, DateTime>> commitSignatureRetriever)
         {
             this.canonicalName = canonicalName;
             this.oldSha = oldSha;
             this.newSha = newSha;
             this.kind = kind;
+            this.commitSignatureRetriever = commitSignatureRetriever;
+            ev.Kind = EventKind.PendingAnalysis;
+            ev.BranchName = CanonicalName;
 
             if (kind == BranchEventKind.Deleted)
             {
@@ -28,16 +36,6 @@ namespace Radar.Tracking
         public bool IsFullyAnalyzed
         {
             get { return isFullyAnalyzed; }
-        }
-
-        public EventKind EventKind
-        {
-            get { return _eventKind; }
-        }
-
-        public string[] Shas
-        {
-            get { return shas; }
         }
 
         public string CanonicalName
@@ -64,33 +62,40 @@ namespace Radar.Tracking
         {
             MarkFullyAnalyzed();
 
-            _eventKind = EventKind.BranchCreatedFromKnownCommit;
             shas = new[] { NewSha };
+
+            ev.Kind = EventKind.BranchCreatedFromKnownCommit;
+            SetEventSignatureToUnknown();
         }
 
         public void MarkAsResetBranchToAKnownCommit()
         {
             MarkFullyAnalyzed();
 
-            _eventKind = EventKind.BranchResetToAKnownCommit;
             shas = new[] { NewSha };
+
+            ev.Kind = EventKind.BranchResetToAKnownCommit;
+            SetEventSignatureToUnknown();
         }
 
         private void MarkAsDeletedBranch()
         {
             MarkFullyAnalyzed();
 
-            _eventKind = EventKind.BranchDeleted;
+            ev.Kind = EventKind.BranchDeleted;
+            SetEventSignatureToUnknown();
         }
 
         public void MarkAsUpdatedBranchWithNewCommits(bool isForcePushed, string[] newShas)
         {
             MarkFullyAnalyzed();
 
-            _eventKind = isForcePushed ? EventKind.BranchForceUpdated :
+            shas = newShas;
+
+            ev.Kind = isForcePushed ? EventKind.BranchForceUpdated :
                 (Kind == BranchEventKind.Created ? EventKind.BranchCreated : EventKind.BranchUpdated);
 
-            shas = newShas;
+            FillEventSignature();
         }
 
         private void MarkFullyAnalyzed()
@@ -100,18 +105,34 @@ namespace Radar.Tracking
             isFullyAnalyzed = true;
         }
 
+        private void SetEventSignatureToUnknown()
+        {
+            ev.Identity = new NullIdentity();
+            ev.Time = DateTime.Now;
+        }
+
+        private void FillEventSignature()
+        {
+            // TODO: Instead of retrieving the identity of the last committer
+            // we should rather publish one event per committer
+
+            var sign = commitSignatureRetriever(shas.Last());
+
+            ev.Identity = sign.Item1;
+            ev.Time = sign.Item2;
+        }
+
         public Event BuildEvent(MonitoredRepository mr)
         {
             Assert.IsTrue(isFullyAnalyzed, "isFullyAnalyzed");
-            Assert.IsTrue(EventKind != EventKind.PendingAnalysis, "EventKind != EventKind.PendingAnalysis");
+            Assert.IsTrue(ev.Kind != EventKind.PendingAnalysis, "EventKind != EventKind.PendingAnalysis");
+            Assert.IsTrue(ev.Identity != null, "ev.Identity != null");
+            Assert.IsTrue(ev.Time != DateTime.MinValue, "ev.Time != DateTime.MinValue");
 
-            return new Event
-            {
-                RepositoryFriendlyName = mr.FriendlyName,
-                BranchName = CanonicalName,
-                Kind = EventKind,
-                Shas = shas
-            };
+            ev.RepositoryFriendlyName = mr.FriendlyName;
+            ev.Shas = shas;
+
+            return ev;
         }
     }
 }

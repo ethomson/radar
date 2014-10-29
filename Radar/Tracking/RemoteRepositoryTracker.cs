@@ -118,13 +118,13 @@ namespace Radar.Tracking
             var events = new List<BranchEvent>();
 
             events.AddRange(newBranches
-                .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created)));
+                .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created, CommitSignatureRetriever)));
 
             events.AddRange(modifiedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated)));
+                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated, CommitSignatureRetriever)));
 
             events.AddRange(droppedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted)));
+                .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted, null)));
 
             if (events.Count == 0)
             {
@@ -187,11 +187,6 @@ namespace Radar.Tracking
             foreach (var branchEvent in toBeDeleted)
             {
                 var ev = branchEvent.BuildEvent(mr);
-                ev.Time = DateTime.Now;
-
-                // TODO: Which identity should we use when a branch is deleted
-                ev.Identity = new Identity{ Name = "Unknown", Email = "dont@know.com" };
-
                 events.Add(ev);
             }
 
@@ -205,11 +200,6 @@ namespace Radar.Tracking
             foreach (var branchEvent in branchEvents.Where(be => be.Kind != BranchEventKind.Deleted))
             {
                 var ev = branchEvent.BuildEvent(mr);
-
-                // TODO: Retrieve identity of committers and commit times
-                ev.Time = DateTime.Now;
-                ev.Identity = new Identity { Name = "S. Omeone", Email = "someone@somewhere.com" };
-
                 events.Add(ev);
             }
 
@@ -245,6 +235,15 @@ namespace Radar.Tracking
             var shas = repository.Commits.QueryBy(new CommitFilter {Since = @new, Until = @old}).Select(c => c.Sha).ToArray();
 
             return new Tuple<bool, string[]>(merge == null || merge != old, shas);
+        }
+
+        private Tuple<Identity, DateTime> CommitSignatureRetriever(string commitSha)
+        {
+            var c = repository.Lookup<Commit>(commitSha);
+
+            return new Tuple<Identity, DateTime>(
+                new Identity { Name = c.Committer.Name, Email = c.Committer.Email }
+                , c.Committer.When.LocalDateTime);
         }
 
         private bool IsCommitLocallyKnown(string sha)
