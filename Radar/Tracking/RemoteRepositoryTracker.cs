@@ -159,7 +159,7 @@ namespace Radar.Tracking
                     continue;
                 }
 
-                branchEvent.MarkAsUpdatedBranchToAKnownCommit();
+                branchEvent.MarkAsResetBranchToAKnownCommit();
             }
         }
 
@@ -199,7 +199,7 @@ namespace Radar.Tracking
             {
                 var result = RetrieveListOfCommittedShas(branchEvent);
 
-                branchEvent.MarkWithNewCommits(result.Item1, result.Item2);
+                branchEvent.MarkAsUpdatedBranchWithNewCommits(result.Item1, result.Item2);
             }
 
             foreach (var branchEvent in branchEvents.Where(be => be.Kind != BranchEventKind.Deleted))

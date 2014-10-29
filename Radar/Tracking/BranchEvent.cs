@@ -68,7 +68,7 @@ namespace Radar.Tracking
             shas = new[] { NewSha };
         }
 
-        public void MarkAsUpdatedBranchToAKnownCommit()
+        public void MarkAsResetBranchToAKnownCommit()
         {
             MarkFullyAnalyzed();
 
@@ -83,7 +83,7 @@ namespace Radar.Tracking
             _eventKind = EventKind.BranchDeleted;
         }
 
-        public void MarkWithNewCommits(bool isForcePushed, string[] newShas)
+        public void MarkAsUpdatedBranchWithNewCommits(bool isForcePushed, string[] newShas)
         {
             MarkFullyAnalyzed();
 
