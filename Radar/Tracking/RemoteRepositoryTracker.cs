@@ -10,7 +10,7 @@ namespace Radar.Tracking
 {
     public class RemoteRepositoryTracker
     {
-        private readonly Radar radar;
+        private readonly ITracer tracer;
         private readonly IRepository repository;
         private readonly Func<ICollection<MonitoredRepository>> snoozedRetriever;
         private readonly Func<ICollection<MonitoredRepository>> forksRetriever;
@@ -22,25 +22,25 @@ namespace Radar.Tracking
             new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
 
         public RemoteRepositoryTracker(
-            Radar radar,
+            ITracer tracer,
             IRepository repository,
             Func<ICollection<MonitoredRepository>> snoozedRetriever,
             Func<ICollection<MonitoredRepository>> forksRetriever
             )
         {
-            Assert.NotNull(radar, "radar");
+            Assert.NotNull(tracer, "tracer");
             Assert.NotNull(repository, "repository");
 
-            this.radar = radar;
+            this.tracer = tracer;
             this.repository = repository;
             this.snoozedRetriever = snoozedRetriever ?? EmptyRetriever;
             this.forksRetriever = forksRetriever ?? EmptyRetriever;
 
             monitoredRepositories = RetrieveRepositoriesToTrack().Result;
 
-            radar.Tracer.WriteInformation("Monitoring {0} repositories...", monitoredRepositories.Count);
+            tracer.WriteInformation("Monitoring {0} repositories...", monitoredRepositories.Count);
 
-            radar.Tracer.WriteInformation("Retrieving initial state of monitored repositories...");
+            tracer.WriteInformation("Retrieving initial state of monitored repositories...");
 
             var eventsRetrieval = (from mr in monitoredRepositories
                                      select ProbeMonitoredRepositoriesState(mr)).ToArray();
@@ -79,7 +79,7 @@ namespace Radar.Tracking
 
         private Dictionary<string, string> RetrieveRemoteBranches(MonitoredRepository monitoredRepository)
         {
-            radar.Tracer.WriteInformation("Retrieving remote tips from repository '{0}'", monitoredRepository.FriendlyName);
+            tracer.WriteInformation("Retrieving remote tips from repository '{0}'", monitoredRepository.FriendlyName);
 
             var remoteTips = RetrieveRemoteTips(monitoredRepository);
 
@@ -174,7 +174,7 @@ namespace Radar.Tracking
 
             if (refspecs.Count > 0)
             {
-                radar.Tracer.WriteInformation("Retrieving commits from repository '{0}'", mr.FriendlyName);
+                tracer.WriteInformation("Retrieving commits from repository '{0}'", mr.FriendlyName);
 
                 FetchCommitsFrom(mr, refspecs);
             }

@@ -74,7 +74,7 @@ namespace Radar.Clients
 
                 repository = new Repository(configuration.Path);
                 tracker = new RemoteRepositoryTracker(
-                    radar,
+                    radar.Tracer,
                     repository,
                     SnoozedRepositoriesRetriever, ForkedRepositoriesRetriever);
             }
