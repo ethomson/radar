@@ -167,8 +167,6 @@ namespace Radar.Tracking
         {
             RemoveReferences(string.Format("refs/radar/{0}/*", mr.FriendlyName));
 
-            var events = new List<Event>();
-
             var refspecs = branchEvents
                 .Where(be => be.Kind != BranchEventKind.Deleted)
                 .Select(createdOrUpdated => string.Format("{0}:refs/radar/{1}/{0}",
@@ -181,15 +179,6 @@ namespace Radar.Tracking
                 FetchCommitsFrom(mr, refspecs);
             }
 
-            var toBeDeleted = branchEvents
-                .Where(be => be.Kind == BranchEventKind.Deleted);
-
-            foreach (var branchEvent in toBeDeleted)
-            {
-                var ev = branchEvent.BuildEvent(mr);
-                events.Add(ev);
-            }
-
             foreach (var branchEvent in branchEvents.Where(b => !b.IsFullyAnalyzed))
             {
                 var result = RetrieveListOfCommittedShas(branchEvent);
@@ -197,13 +186,7 @@ namespace Radar.Tracking
                 branchEvent.MarkAsUpdatedBranchWithNewCommits(result.Item1, result.Item2);
             }
 
-            foreach (var branchEvent in branchEvents.Where(be => be.Kind != BranchEventKind.Deleted))
-            {
-                var ev = branchEvent.BuildEvent(mr);
-                events.Add(ev);
-            }
-
-            return events;
+            return branchEvents.Select(branchEvent => branchEvent.BuildEvent(mr)).ToList();
         }
 
         private async Task<ConcurrentBag<MonitoredRepository>> RetrieveRepositoriesToTrack()
