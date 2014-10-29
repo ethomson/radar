@@ -66,6 +66,10 @@ namespace Radar.Tracking
 
             refinedEventKind = EventKind.BranchCreatedFromKnownCommit;
             SetEventSignatureToUnknown();
+
+            ev.Kind = refinedEventKind;
+            ev.Shas = shas;
+            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
         }
 
         public void MarkAsResetBranchToAKnownCommit()
@@ -133,7 +137,7 @@ namespace Radar.Tracking
             {
                     case EventKind.BranchCreatedFromKnownCommit:
                         ev.Content = string.Format("In remote repository '{0}', a new branch '{1}' has been created from known commit [{2}]",
-                            mr.FriendlyName, ToFriendlyName(CanonicalName), shas.Last());
+                            mr.FriendlyName, ev.ShortReferenceName, ev.Shas.Last());
                         break;
                     case EventKind.BranchResetToAKnownCommit:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been reset to a known commit [{2}]",
