@@ -84,18 +84,13 @@ namespace Radar.Tracking
             var remoteTips = RetrieveRemoteTips(monitoredRepository);
 
             return remoteTips
-                .Where(kvp => IsHeadOrTag(kvp.Key))
+                .Where(kvp => IsHead(kvp.Key))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        private bool IsHeadOrTag(string refName)
+        private bool IsHead(string refName)
         {
             if (refName.StartsWith("refs/heads/"))
-            {
-                return true;
-            }
-
-            if (refName.StartsWith("refs/tags/"))
             {
                 return true;
             }
