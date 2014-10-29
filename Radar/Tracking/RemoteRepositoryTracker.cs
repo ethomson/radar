@@ -17,9 +17,9 @@ namespace Radar.Tracking
         private readonly ConcurrentBag<MonitoredRepository> monitoredRepositories;
 
         private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> old =
-            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
         private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> current =
-            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
 
         public RemoteRepositoryTracker(
             Radar radar,
@@ -45,7 +45,7 @@ namespace Radar.Tracking
             var eventsRetrieval = (from mr in monitoredRepositories
                                      select ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-            Task.WhenAll(eventsRetrieval);
+            Task.WhenAll(eventsRetrieval).Wait();
         }
 
         public IEnumerable<MonitoredRepository> MonitoredRepositories
@@ -84,18 +84,13 @@ namespace Radar.Tracking
             var remoteTips = RetrieveRemoteTips(monitoredRepository);
 
             return remoteTips
-                .Where(kvp => IsHeadOrTag(kvp.Key))
+                .Where(kvp => IsHead(kvp.Key))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        private bool IsHeadOrTag(string refName)
+        private bool IsHead(string refName)
         {
             if (refName.StartsWith("refs/heads/"))
-            {
-                return true;
-            }
-
-            if (refName.StartsWith("refs/tags/"))
             {
                 return true;
             }
@@ -123,13 +118,13 @@ namespace Radar.Tracking
             var events = new List<BranchEvent>();
 
             events.AddRange(newBranches
-                .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created)));
+                .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created, CommitSignatureRetriever)));
 
             events.AddRange(modifiedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated)));
+                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated, CommitSignatureRetriever)));
 
             events.AddRange(droppedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted)));
+                .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted, null)));
 
             if (events.Count == 0)
             {
@@ -164,15 +159,13 @@ namespace Radar.Tracking
                     continue;
                 }
 
-                branchEvent.MarkAsUpdatedBranchToAKnownCommit();
+                branchEvent.MarkAsResetBranchToAKnownCommit();
             }
         }
 
         private IEnumerable<Event> Synchronise(MonitoredRepository mr, BranchEvent[] branchEvents)
         {
             RemoveReferences(string.Format("refs/radar/{0}/*", mr.FriendlyName));
-
-            var events = new List<Event>();
 
             var refspecs = branchEvents
                 .Where(be => be.Kind != BranchEventKind.Deleted)
@@ -186,39 +179,14 @@ namespace Radar.Tracking
                 FetchCommitsFrom(mr, refspecs);
             }
 
-            var toBeDeleted = branchEvents
-                .Where(be => be.Kind == BranchEventKind.Deleted);
-
-            foreach (var branchEvent in toBeDeleted)
-            {
-                var ev = branchEvent.BuildEvent(mr);
-                ev.Time = DateTime.Now;
-
-                // TODO: Which identity should we use when a branch is deleted
-                ev.Identity = new Identity{ Name = "Unknown", Email = "dont@know.com" };
-
-                events.Add(ev);
-            }
-
             foreach (var branchEvent in branchEvents.Where(b => !b.IsFullyAnalyzed))
             {
                 var result = RetrieveListOfCommittedShas(branchEvent);
 
-                branchEvent.MarkWithNewCommits(result.Item1, result.Item2);
+                branchEvent.MarkAsUpdatedBranchWithNewCommits(result.Item1, result.Item2);
             }
 
-            foreach (var branchEvent in branchEvents.Where(be => be.Kind != BranchEventKind.Deleted))
-            {
-                var ev = branchEvent.BuildEvent(mr);
-
-                // TODO: Retrieve identity of committers and commit times
-                ev.Time = DateTime.Now;
-                ev.Identity = new Identity { Name = "S. Omeone", Email = "someone@somewhere.com" };
-
-                events.Add(ev);
-            }
-
-            return events;
+            return branchEvents.Select(branchEvent => branchEvent.BuildEvent(mr)).ToList();
         }
 
         private async Task<ConcurrentBag<MonitoredRepository>> RetrieveRepositoriesToTrack()
@@ -243,13 +211,41 @@ namespace Radar.Tracking
 
         private Tuple<bool, string[]> RetrieveListOfCommittedShas(BranchEvent branchEvent)
         {
-            var @old = repository.Lookup<Commit>(branchEvent.OldSha);
+            string @oldSha;
+
+            if (branchEvent.OldSha == null)
+            {
+                @oldSha = RetrieveFirstKnownCommitShaOnBranch(branchEvent.NewSha);
+            }
+            else
+            {
+                @oldSha = branchEvent.OldSha;
+            }
+
+            var @old = repository.Lookup<Commit>(@oldSha);
             var @new = repository.Lookup<Commit>(branchEvent.NewSha);
 
             var merge = repository.Commits.FindMergeBase(@old, @new);
             var shas = repository.Commits.QueryBy(new CommitFilter {Since = @new, Until = @old}).Select(c => c.Sha).ToArray();
 
             return new Tuple<bool, string[]>(merge == null || merge != old, shas);
+        }
+
+        private string RetrieveFirstKnownCommitShaOnBranch(string newBranchCommitSha)
+        {
+            var newCommits = repository.Commits
+                .QueryBy(new CommitFilter { Since = newBranchCommitSha, Until = repository.Branches });
+
+            return newCommits.Last().Parents.First().Sha;
+        }
+
+        private Tuple<Identity, DateTime> CommitSignatureRetriever(string commitSha)
+        {
+            var c = repository.Lookup<Commit>(commitSha);
+
+            return new Tuple<Identity, DateTime>(
+                new Identity { Name = c.Committer.Name, Email = c.Committer.Email }
+                , c.Committer.When.LocalDateTime);
         }
 
         private bool IsCommitLocallyKnown(string sha)

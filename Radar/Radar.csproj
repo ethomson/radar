@@ -50,7 +50,9 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="Windows" />
+    <Reference Include="Windows.Data" />
+    <Reference Include="Windows.Foundation" />
+    <Reference Include="Windows.UI" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Clients\Client.cs" />
@@ -103,6 +105,9 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="Radar.config.sample">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Resources\PersonPlaceholder.gif" />
