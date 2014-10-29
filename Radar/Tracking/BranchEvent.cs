@@ -10,6 +10,7 @@ namespace Radar.Tracking
         private readonly string oldSha;
         private readonly string newSha;
         private readonly BranchEventKind kind;
+        private EventKind refinedEventKind;
         private readonly Func<string, Tuple<Identity, DateTime>> commitSignatureRetriever;
         private bool isFullyAnalyzed;
         private string[] shas = { };
@@ -24,8 +25,7 @@ namespace Radar.Tracking
             this.newSha = newSha;
             this.kind = kind;
             this.commitSignatureRetriever = commitSignatureRetriever;
-            ev.Kind = EventKind.PendingAnalysis;
-            ev.BranchName = CanonicalName;
+            refinedEventKind = EventKind.PendingAnalysis;
 
             if (kind == BranchEventKind.Deleted)
             {
@@ -64,7 +64,7 @@ namespace Radar.Tracking
 
             shas = new[] { NewSha };
 
-            ev.Kind = EventKind.BranchCreatedFromKnownCommit;
+            refinedEventKind = EventKind.BranchCreatedFromKnownCommit;
             SetEventSignatureToUnknown();
         }
 
@@ -74,7 +74,7 @@ namespace Radar.Tracking
 
             shas = new[] { NewSha };
 
-            ev.Kind = EventKind.BranchResetToAKnownCommit;
+            refinedEventKind = EventKind.BranchResetToAKnownCommit;
             SetEventSignatureToUnknown();
         }
 
@@ -82,7 +82,7 @@ namespace Radar.Tracking
         {
             MarkFullyAnalyzed();
 
-            ev.Kind = EventKind.BranchDeleted;
+            refinedEventKind = EventKind.BranchDeleted;
             SetEventSignatureToUnknown();
         }
 
@@ -92,7 +92,7 @@ namespace Radar.Tracking
 
             shas = newShas;
 
-            ev.Kind = isForcePushed ? EventKind.BranchForceUpdated :
+            refinedEventKind = isForcePushed ? EventKind.BranchForceUpdated :
                 (Kind == BranchEventKind.Created ? EventKind.BranchCreated : EventKind.BranchUpdated);
 
             FillEventSignature();
@@ -125,14 +125,44 @@ namespace Radar.Tracking
         public Event BuildEvent(MonitoredRepository mr)
         {
             Assert.IsTrue(isFullyAnalyzed, "isFullyAnalyzed");
-            Assert.IsTrue(ev.Kind != EventKind.PendingAnalysis, "EventKind != EventKind.PendingAnalysis");
+            Assert.IsTrue(refinedEventKind != EventKind.PendingAnalysis, "refinedEventKind != EventKind.PendingAnalysis");
             Assert.IsTrue(ev.Identity != null, "ev.Identity != null");
             Assert.IsTrue(ev.Time != DateTime.MinValue, "ev.Time != DateTime.MinValue");
 
-            ev.RepositoryFriendlyName = mr.FriendlyName;
-            ev.Shas = shas;
+            switch (refinedEventKind)
+            {
+                    case EventKind.BranchCreatedFromKnownCommit:
+                        ev.Content = string.Format("In remote repository '{0}', a new branch '{1}' has been created from known commit [{2}]",
+                            mr.FriendlyName, ToFriendlyName(CanonicalName), shas.Last());
+                        break;
+                    case EventKind.BranchResetToAKnownCommit:
+                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been reset known commit [{2}]",
+                            mr.FriendlyName, ToFriendlyName(CanonicalName), shas.Last());
+                        break;
+                    case EventKind.BranchDeleted:
+                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been deleted",
+                            mr.FriendlyName, ToFriendlyName(CanonicalName));
+                        break;
+                    case EventKind.BranchCreated:
+                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been created with new commits [{2}]",
+                            mr.FriendlyName, ToFriendlyName(CanonicalName), string.Join(", ", shas));
+                        break;
+                    case EventKind.BranchUpdated:
+                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been updated with new commits [{2}]",
+                            mr.FriendlyName, ToFriendlyName(CanonicalName), string.Join(", ", shas));
+                        break;
+                    case EventKind.BranchForceUpdated:
+                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been force updated with new commits [{2}]",
+                            mr.FriendlyName, ToFriendlyName(CanonicalName), string.Join(", ", shas));
+                        break;
+            }
 
             return ev;
+        }
+
+        private string ToFriendlyName(string canonicalBranchName)
+        {
+            return canonicalBranchName.Substring("refs/heads/".Length);
         }
     }
 }
