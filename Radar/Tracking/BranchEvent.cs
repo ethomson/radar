@@ -108,6 +108,10 @@ namespace Radar.Tracking
                 (Kind == BranchEventKind.Created ? EventKind.BranchCreated : EventKind.BranchUpdated);
 
             FillEventSignature();
+
+            ev.Kind = refinedEventKind;
+            ev.Shas = shas;
+            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
         }
 
         private void MarkFullyAnalyzed()
@@ -157,7 +161,7 @@ namespace Radar.Tracking
                         break;
                     case EventKind.BranchCreated:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been created with new commits [{2}]",
-                            mr.FriendlyName, ToFriendlyName(CanonicalName), string.Join(", ", shas));
+                            mr.FriendlyName, ev.ShortReferenceName, string.Join(", ", shas));
                         break;
                     case EventKind.BranchUpdated:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been updated with new commits [{2}]",

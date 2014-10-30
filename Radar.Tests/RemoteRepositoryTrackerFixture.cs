@@ -117,6 +117,31 @@ namespace Radar.Tests
             }
         }
 
+        [Fact]
+        public void CanDetectACreatedBranch()
+        {
+            var path = CloneUpstream();
+
+            using (var repo = new Repository(path))
+            {
+                var tracker = BuildSUT(repo);
+
+                var branchName = string.Format("branch-{0}", Guid.NewGuid());
+
+                var createdCommitsShas = PerformUpstreamChange(r => CreateBranchWithSomeCommits(r, branchName, c1));
+
+                var evts = RetrieveActivity(tracker);
+
+                Assert.Equal(1, evts.Count);
+                Event e = evts.Single();
+
+                Assert.IsNotType<NullIdentity>(e.Identity);
+                Assert.Equal(EventKind.BranchCreated, e.Kind);
+                Assert.Equal(branchName, e.ShortReferenceName);
+                Assert.Equal(createdCommitsShas, e.Shas);
+            }
+        }
+
         private void DeleteBranch(IRepository repo, string branchName)
         {
             var branch = repo.Branches[branchName];
@@ -131,18 +156,20 @@ namespace Radar.Tests
             repo.Refs.UpdateTarget(branchRef, to.Id);
         }
 
-        private void CreateBranchWithSomeCommits(IRepository repo, string branchName, Commit from)
+        private string[] CreateBranchWithSomeCommits(IRepository repo, string branchName, Commit from)
         {
             var currentHead = repo.Head;
 
             var newBranch = repo.Branches.Add(branchName, from);
             repo.Checkout(newBranch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
 
-            AddRandomCommit(repo);
-            AddRandomCommit(repo);
-            AddRandomCommit(repo);
+            var r1 = AddRandomCommit(repo);
+            var r2 = AddRandomCommit(repo);
+            var r3 = AddRandomCommit(repo);
 
             repo.Checkout(currentHead, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+
+            return new[] { r3.Sha, r2.Sha, r1.Sha };
         }
 
         private void CreateBranchFromAKnownCommit(IRepository repo, string branchName, Commit commit)
@@ -153,6 +180,11 @@ namespace Radar.Tests
         private void PerformUpstreamChange(Action<IRepository> stateModifier)
         {
             stateModifier(upstream);
+        }
+
+        private string[] PerformUpstreamChange(Func<IRepository, string[]> stateModifier)
+        {
+            return stateModifier(upstream);
         }
 
         private static List<Event> RetrieveActivity(RemoteRepositoryTracker tracker)
