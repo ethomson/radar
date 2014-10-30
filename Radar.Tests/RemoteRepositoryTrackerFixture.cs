@@ -142,6 +142,33 @@ namespace Radar.Tests
             }
         }
 
+        [Fact]
+        public void CanDetectAnUpdatedBranch()
+        {
+            var path = CloneUpstream();
+
+            using (var repo = new Repository(path))
+            {
+                var branchName = string.Format("branch-{0}", Guid.NewGuid());
+
+                PerformUpstreamChange(r => CreateBranchWithSomeCommits(r, branchName, c1));
+
+                var tracker = BuildSUT(repo);
+
+                var updatedCommitsShas = PerformUpstreamChange(r => UpdateBranchWithSomeCommits(r, branchName));
+
+                var evts = RetrieveActivity(tracker);
+
+                Assert.Equal(1, evts.Count);
+                Event e = evts.Single();
+
+                Assert.IsNotType<NullIdentity>(e.Identity);
+                Assert.Equal(EventKind.BranchUpdated, e.Kind);
+                Assert.Equal(branchName, e.ShortReferenceName);
+                Assert.Equal(updatedCommitsShas, e.Shas);
+            }
+        }
+
         private void DeleteBranch(IRepository repo, string branchName)
         {
             var branch = repo.Branches[branchName];
@@ -158,10 +185,29 @@ namespace Radar.Tests
 
         private string[] CreateBranchWithSomeCommits(IRepository repo, string branchName, Commit from)
         {
+            return RandomCommitAdder(repo, r =>
+            {
+                var newBranch = repo.Branches.Add(branchName, from);
+                repo.Checkout(newBranch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+
+            });
+        }
+
+        private string[] UpdateBranchWithSomeCommits(IRepository repo, string branchName)
+        {
+            return RandomCommitAdder(repo, r =>
+            {
+                var branch = repo.Branches[branchName];
+                repo.Checkout(branch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+
+            });
+        }
+
+        private string[] RandomCommitAdder(IRepository repo, Action<IRepository> repoModifier)
+        {
             var currentHead = repo.Head;
 
-            var newBranch = repo.Branches.Add(branchName, from);
-            repo.Checkout(newBranch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+            repoModifier(repo);
 
             var r1 = AddRandomCommit(repo);
             var r2 = AddRandomCommit(repo);
