@@ -54,7 +54,7 @@ namespace Radar.Clients
         public IEnumerable<IEvent> RecentEvents()
         {
             List<IEvent> events = new List<IEvent>();
-            events.Add(new Event()
+            events.Add(new DummyEvent()
 
             {
                 Time = DateTime.Now,

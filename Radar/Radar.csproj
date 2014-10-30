@@ -64,6 +64,7 @@
     <Compile Include="Clients\RepositoryClient.cs" />
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
     <Compile Include="Event.cs" />
+    <Compile Include="Clients\DummyEvent.cs" />
     <Compile Include="Identity.cs" />
     <Compile Include="IEvent.cs" />
     <Compile Include="Images\ImageManagerConfiguration.cs" />
