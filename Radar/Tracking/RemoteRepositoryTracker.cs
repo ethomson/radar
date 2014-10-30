@@ -207,36 +207,65 @@ namespace Radar.Tracking
             return new MonitoredRepository[] { };
         }
 
-        #region Git repository related interactions
-
         private Tuple<bool, string[]> RetrieveListOfCommittedShas(BranchEvent branchEvent)
         {
-            string @oldSha;
+            string oldSha = branchEvent.OldSha;
 
-            if (branchEvent.OldSha == null)
+            if (oldSha == null)
             {
-                @oldSha = RetrieveFirstKnownCommitShaOnBranch(branchEvent.NewSha);
-            }
-            else
-            {
-                @oldSha = branchEvent.OldSha;
+                oldSha = RetrieveParentOfFirstUnknownCommitShaOnBranch(branchEvent.NewSha);
             }
 
-            var @old = repository.Lookup<Commit>(@oldSha);
-            var @new = repository.Lookup<Commit>(branchEvent.NewSha);
+            var isOldShaCommitLocallyKnown = IsCommitLocallyKnown(oldSha);
 
-            var merge = repository.Commits.FindMergeBase(@old, @new);
-            var shas = repository.Commits.QueryBy(new CommitFilter {Since = @new, Until = @old}).Select(c => c.Sha).ToArray();
+            var shas = RetrieveCommitShasOnBranchBetween(branchEvent.NewSha, isOldShaCommitLocallyKnown ? oldSha : null);
 
-            return new Tuple<bool, string[]>(merge == null || merge != old, shas);
+            bool isForcedPushed = false;
+
+
+            if (isOldShaCommitLocallyKnown)
+            {
+                isForcedPushed = IsForcedPushed(branchEvent.NewSha, oldSha);
+            }
+
+            return new Tuple<bool, string[]>(isForcedPushed, shas);
         }
 
-        private string RetrieveFirstKnownCommitShaOnBranch(string newBranchCommitSha)
+        private string RetrieveParentOfFirstUnknownCommitShaOnBranch(string newBranchCommitSha)
         {
-            var newCommits = repository.Commits
-                .QueryBy(new CommitFilter { Since = newBranchCommitSha, Until = repository.Branches });
+            var firstUnknownCommitShaOnBranch = RetrieveFirstUnknownCommitShaOnBranch(newBranchCommitSha);
 
-            return newCommits.Last().Parents.First().Sha;
+            return firstUnknownCommitShaOnBranch + "^";
+        }
+
+        #region Git repository related interactions
+
+        private bool IsForcedPushed(string newTipSha, string oldTipSha)
+        {
+            var oldTip = repository.Lookup<Commit>(oldTipSha);
+            var newTip = repository.Lookup<Commit>(newTipSha);
+
+            var merge = repository.Commits.FindMergeBase(oldTip, newTip);
+
+            bool isForcedPushed = merge == null || merge != oldTip;
+
+            return isForcedPushed;
+        }
+
+        private string[] RetrieveCommitShasOnBranchBetween(string since, string until)
+        {
+            return repository.Commits
+                .QueryBy(new CommitFilter { Since = since, Until = until })
+                .Select(c => c.Sha)
+                .ToArray();
+        }
+
+        private string RetrieveFirstUnknownCommitShaOnBranch(string branchTipSha)
+        {
+            return repository.Commits
+                .QueryBy(new CommitFilter { Since = branchTipSha, Until = repository.Branches })
+                .Last()
+                .Sha;
         }
 
         private Tuple<Identity, DateTime> CommitSignatureRetriever(string commitSha)

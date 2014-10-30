@@ -143,6 +143,31 @@ namespace Radar.Tests
         }
 
         [Fact]
+        public void CanDetectACreatedRootBranch()
+        {
+            var path = CloneUpstream();
+
+            using (var repo = new Repository(path))
+            {
+                var tracker = BuildSUT(repo);
+
+                var branchName = string.Format("branch-{0}", Guid.NewGuid());
+
+                var createdCommitsShas = PerformUpstreamChange(r => CreateBranchWithSomeCommits(r, branchName));
+
+                var evts = RetrieveActivity(tracker);
+
+                Assert.Equal(1, evts.Count);
+                Event e = evts.Single();
+
+                Assert.IsNotType<NullIdentity>(e.Identity);
+                Assert.Equal(EventKind.BranchCreated, e.Kind);
+                Assert.Equal(branchName, e.ShortReferenceName);
+                Assert.Equal(createdCommitsShas, e.Shas);
+            }
+        }
+
+        [Fact]
         public void CanDetectAnUpdatedBranch()
         {
             var path = CloneUpstream();
@@ -210,13 +235,20 @@ namespace Radar.Tests
             repo.Refs.UpdateTarget(branchRef, to.Id);
         }
 
-        private string[] CreateBranchWithSomeCommits(IRepository repo, string branchName, Commit from)
+        private string[] CreateBranchWithSomeCommits(IRepository repo, string branchName, Commit from = null)
         {
             return RandomCommitAdder(repo, r =>
             {
-                var newBranch = repo.Branches.Add(branchName, from);
-                repo.Checkout(newBranch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
-
+                if (from == null)
+                {
+                    repo.Refs.UpdateTarget("HEAD", string.Format("refs/heads/{0}", branchName));
+                    repo.RemoveUntrackedFiles();
+                }
+                else
+                {
+                    var newBranch = repo.Branches.Add(branchName, from);
+                    repo.Checkout(newBranch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+                }
             });
         }
 
