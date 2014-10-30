@@ -63,6 +63,54 @@ namespace Radar.Tests
             }
         }
 
+        [Fact]
+        public void CanDetectABranchResetToAKnownCommit()
+        {
+            var path = CloneUpstream();
+
+            using (var repo = new Repository(path))
+            {
+                var branchName = string.Format("branch-{0}", Guid.NewGuid());
+
+                PerformUpstreamChange(r => CreateBranchWithSomeCommits(r, branchName, c3));
+
+                var tracker = BuildSUT(repo);
+
+                PerformUpstreamChange(r => ResetBranchToKnownCommit(r, branchName, c1));
+
+                var evts = RetrieveActivity(tracker);
+
+                Assert.Equal(1, evts.Count);
+                Event e = evts.Single();
+
+                Assert.IsType<NullIdentity>(e.Identity);
+                Assert.Equal(EventKind.BranchResetToAKnownCommit, e.Kind);
+                Assert.Equal(branchName, e.ShortReferenceName);
+                Assert.Equal(c1.Sha, e.Shas.Single());
+            }
+        }
+
+        private void ResetBranchToKnownCommit(IRepository repo, string branchName, Commit to)
+        {
+            var branchRef = repo.Refs[string.Format("refs/heads/{0}", branchName)];
+
+            repo.Refs.UpdateTarget(branchRef, to.Id);
+        }
+
+        private void CreateBranchWithSomeCommits(IRepository repo, string branchName, Commit from)
+        {
+            var currentHead = repo.Head;
+
+            var newBranch = repo.Branches.Add(branchName, from);
+            repo.Checkout(newBranch, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+
+            AddRandomCommit(repo);
+            AddRandomCommit(repo);
+            AddRandomCommit(repo);
+
+            repo.Checkout(currentHead, new CheckoutOptions { CheckoutModifiers = CheckoutModifiers.Force });
+        }
+
         private void CreateBranchFromAKnownCommit(IRepository repo, string branchName, Commit commit)
         {
             repo.Branches.Add(branchName, commit);

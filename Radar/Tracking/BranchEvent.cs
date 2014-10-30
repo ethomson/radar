@@ -80,6 +80,10 @@ namespace Radar.Tracking
 
             refinedEventKind = EventKind.BranchResetToAKnownCommit;
             SetEventSignatureToUnknown();
+
+            ev.Kind = refinedEventKind;
+            ev.Shas = shas;
+            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
         }
 
         private void MarkAsDeletedBranch()
@@ -141,7 +145,7 @@ namespace Radar.Tracking
                         break;
                     case EventKind.BranchResetToAKnownCommit:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been reset to a known commit [{2}]",
-                            mr.FriendlyName, ToFriendlyName(CanonicalName), shas.Last());
+                            mr.FriendlyName, ev.ShortReferenceName, ev.Shas.Last());
                         break;
                     case EventKind.BranchDeleted:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been deleted",
