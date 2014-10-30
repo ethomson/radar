@@ -9,7 +9,7 @@ namespace Radar.Clients
         bool Running { get; }
         string Name { get; }
         void Start();
-        IEnumerable<Event> RecentEvents();
+        IEnumerable<IEvent> RecentEvents();
         void Stop();
     }
 }

@@ -122,7 +122,7 @@ namespace Radar.Tracking
             ev.Time = sign.Item2;
         }
 
-        public Event BuildEvent(MonitoredRepository mr)
+        public IEvent BuildEvent(MonitoredRepository mr)
         {
             Assert.IsTrue(isFullyAnalyzed, "isFullyAnalyzed");
             Assert.IsTrue(refinedEventKind != EventKind.PendingAnalysis, "refinedEventKind != EventKind.PendingAnalysis");
@@ -136,7 +136,7 @@ namespace Radar.Tracking
                             mr.FriendlyName, ToFriendlyName(CanonicalName), shas.Last());
                         break;
                     case EventKind.BranchResetToAKnownCommit:
-                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been reset known commit [{2}]",
+                        ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been reset to a known commit [{2}]",
                             mr.FriendlyName, ToFriendlyName(CanonicalName), shas.Last());
                         break;
                     case EventKind.BranchDeleted:

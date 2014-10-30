@@ -51,9 +51,9 @@ namespace Radar.Clients
             running = true;
         }
 
-        public IEnumerable<Event> RecentEvents()
+        public IEnumerable<IEvent> RecentEvents()
         {
-            List<Event> events = new List<Event>();
+            List<IEvent> events = new List<IEvent>();
             events.Add(new Event()
 
             {

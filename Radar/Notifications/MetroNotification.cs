@@ -94,7 +94,7 @@ namespace Radar.Notifications
             return filename;
         }
 
-        public void Notify(Client client, Event e)
+        public void Notify(Client client, IEvent e)
         {
             ToastTemplateType toastTemplate = ToastTemplateType.ToastImageAndText02;
             XmlDocument toastXml = ToastNotificationManager.GetTemplateContent(toastTemplate);
