@@ -92,6 +92,10 @@ namespace Radar.Tracking
 
             refinedEventKind = EventKind.BranchDeleted;
             SetEventSignatureToUnknown();
+
+            ev.Kind = refinedEventKind;
+            ev.Shas = shas;
+            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
         }
 
         public void MarkAsUpdatedBranchWithNewCommits(bool isForcePushed, string[] newShas)
@@ -149,7 +153,7 @@ namespace Radar.Tracking
                         break;
                     case EventKind.BranchDeleted:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been deleted",
-                            mr.FriendlyName, ToFriendlyName(CanonicalName));
+                            mr.FriendlyName, ev.ShortReferenceName);
                         break;
                     case EventKind.BranchCreated:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been created with new commits [{2}]",

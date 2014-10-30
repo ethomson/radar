@@ -90,6 +90,40 @@ namespace Radar.Tests
             }
         }
 
+        [Fact]
+        public void CanDetectADeletedBranch()
+        {
+            var path = CloneUpstream();
+
+            using (var repo = new Repository(path))
+            {
+                var branchName = string.Format("branch-{0}", Guid.NewGuid());
+
+                PerformUpstreamChange(r => CreateBranchWithSomeCommits(r, branchName, c3));
+
+                var tracker = BuildSUT(repo);
+
+                PerformUpstreamChange(r => DeleteBranch(r, branchName));
+
+                var evts = RetrieveActivity(tracker);
+
+                Assert.Equal(1, evts.Count);
+                Event e = evts.Single();
+
+                Assert.IsType<NullIdentity>(e.Identity);
+                Assert.Equal(EventKind.BranchDeleted, e.Kind);
+                Assert.Equal(branchName, e.ShortReferenceName);
+                Assert.Empty(e.Shas);
+            }
+        }
+
+        private void DeleteBranch(IRepository repo, string branchName)
+        {
+            var branch = repo.Branches[branchName];
+
+            repo.Branches.Remove(branch);
+        }
+
         private void ResetBranchToKnownCommit(IRepository repo, string branchName, Commit to)
         {
             var branchRef = repo.Refs[string.Format("refs/heads/{0}", branchName)];
