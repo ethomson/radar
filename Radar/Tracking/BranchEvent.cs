@@ -66,10 +66,7 @@ namespace Radar.Tracking
 
             refinedEventKind = EventKind.BranchCreatedFromKnownCommit;
             SetEventSignatureToUnknown();
-
-            ev.Kind = refinedEventKind;
-            ev.Shas = shas;
-            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
+            SetEventCommonProperties();
         }
 
         public void MarkAsResetBranchToAKnownCommit()
@@ -80,10 +77,7 @@ namespace Radar.Tracking
 
             refinedEventKind = EventKind.BranchResetToAKnownCommit;
             SetEventSignatureToUnknown();
-
-            ev.Kind = refinedEventKind;
-            ev.Shas = shas;
-            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
+            SetEventCommonProperties();
         }
 
         private void MarkAsDeletedBranch()
@@ -92,10 +86,7 @@ namespace Radar.Tracking
 
             refinedEventKind = EventKind.BranchDeleted;
             SetEventSignatureToUnknown();
-
-            ev.Kind = refinedEventKind;
-            ev.Shas = shas;
-            ev.ShortReferenceName = ToFriendlyName(CanonicalName);
+            SetEventCommonProperties();
         }
 
         public void MarkAsUpdatedBranchWithNewCommits(bool isForcePushed, string[] newShas)
@@ -108,7 +99,11 @@ namespace Radar.Tracking
                 (Kind == BranchEventKind.Created ? EventKind.BranchCreated : EventKind.BranchUpdated);
 
             FillEventSignature();
+            SetEventCommonProperties();
+        }
 
+        private void SetEventCommonProperties()
+        {
             ev.Kind = refinedEventKind;
             ev.Shas = shas;
             ev.ShortReferenceName = ToFriendlyName(CanonicalName);
