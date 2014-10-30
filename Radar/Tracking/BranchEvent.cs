@@ -14,7 +14,7 @@ namespace Radar.Tracking
         private readonly Func<string, Tuple<Identity, DateTime>> commitSignatureRetriever;
         private bool isFullyAnalyzed;
         private string[] shas = { };
-        private readonly Event ev = new Event();
+        private readonly RepositoryEvent ev = new RepositoryEvent();
 
         public BranchEvent(
             string canonicalName, string oldSha, string newSha,

@@ -54,7 +54,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchCreatedFromKnownCommit, e.Kind);
@@ -81,7 +81,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchResetToAKnownCommit, e.Kind);
@@ -108,7 +108,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchDeleted, e.Kind);
@@ -133,7 +133,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsNotType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchCreated, e.Kind);
@@ -158,7 +158,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsNotType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchCreated, e.Kind);
@@ -185,7 +185,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsNotType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchUpdated, e.Kind);
@@ -213,7 +213,7 @@ namespace Radar.Tests
                 var evts = RetrieveActivity(tracker);
 
                 Assert.Equal(1, evts.Count);
-                Event e = evts.Single();
+                RepositoryEvent e = evts.Single();
 
                 Assert.IsNotType<NullIdentity>(e.Identity);
                 Assert.Equal(EventKind.BranchForceUpdated, e.Kind);
@@ -292,15 +292,15 @@ namespace Radar.Tests
             return stateModifier(upstream);
         }
 
-        private static List<Event> RetrieveActivity(RemoteRepositoryTracker tracker)
+        private static List<RepositoryEvent> RetrieveActivity(RemoteRepositoryTracker tracker)
         {
-            var evts = new List<Event>();
+            var evts = new List<RepositoryEvent>();
 
             foreach (var monitoredRepository in tracker.MonitoredRepositories)
             {
                 var enumerable = tracker.ProbeMonitoredRepositoriesState(monitoredRepository).Result;
 
-                evts.AddRange(enumerable.Cast<Event>());
+                evts.AddRange(enumerable.Cast<RepositoryEvent>());
             }
 
             return evts;
