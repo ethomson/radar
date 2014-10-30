@@ -169,6 +169,33 @@ namespace Radar.Tests
             }
         }
 
+        [Fact]
+        public void CanDetectAForceUpdatedBranch()
+        {
+            var path = CloneUpstream();
+
+            using (var repo = new Repository(path))
+            {
+                var branchName = string.Format("branch-{0}", Guid.NewGuid());
+
+                PerformUpstreamChange(r => CreateBranchWithSomeCommits(r, branchName, c1));
+
+                var tracker = BuildSUT(repo);
+
+                PerformUpstreamChange(r => ResetBranchToKnownCommit(r, branchName, c3));
+                var updatedCommitsShas = PerformUpstreamChange(r => UpdateBranchWithSomeCommits(r, branchName));
+
+                var evts = RetrieveActivity(tracker);
+
+                Assert.Equal(1, evts.Count);
+                Event e = evts.Single();
+
+                Assert.IsNotType<NullIdentity>(e.Identity);
+                Assert.Equal(EventKind.BranchForceUpdated, e.Kind);
+                Assert.Equal(branchName, e.ShortReferenceName);
+                Assert.Equal(updatedCommitsShas.Concat(new[] { c3.Sha, c2.Sha }), e.Shas);
+            }
+        }
         private void DeleteBranch(IRepository repo, string branchName)
         {
             var branch = repo.Branches[branchName];

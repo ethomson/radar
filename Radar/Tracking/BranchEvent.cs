@@ -169,7 +169,7 @@ namespace Radar.Tracking
                         break;
                     case EventKind.BranchForceUpdated:
                         ev.Content = string.Format("In remote repository '{0}', branch '{1}' has been force updated with new commits [{2}]",
-                            mr.FriendlyName, ToFriendlyName(CanonicalName), string.Join(", ", shas));
+                            mr.FriendlyName, ev.ShortReferenceName, string.Join(", ", shas));
                         break;
             }
 
