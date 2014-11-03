@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 
 using Radar.Clients;
+using Radar.Images;
 using Radar.Notifications;
 using Radar.Util;
 
@@ -24,6 +25,7 @@ namespace Radar
 
             Configuration = config;
             this.tracer = new NullTracer();
+            ImageManager = new ImageManager(config);
         }
 
         public Configuration Configuration
@@ -43,6 +45,12 @@ namespace Radar
             {
                 tracer = value;
             }
+        }
+
+        public ImageManager ImageManager
+        {
+            get;
+            private set;
         }
 
         public bool Running
@@ -73,22 +81,21 @@ namespace Radar
 
             foreach (ClientConfiguration clientConfig in Configuration.Clients)
             {
-                Client client = ClientFactory.NewClient(clientConfig);
+                Client client = ClientFactory.NewClient(this, clientConfig);
 
                 if (client == null)
                 {
-                    tracer.WriteError("Could not find notification for type {0}", clientConfig.Type);
+                    tracer.WriteError("Could not find client for type {0}", clientConfig.Type);
                     Environment.Exit(1);
                 }
 
-                client.Tracer = tracer;
                 client.Start();
                 clients.Add(client);
             }
 
             foreach (NotificationConfiguration notificationConfig in Configuration.Notifications)
             {
-                Notification notification = NotificationFactory.NewNotification(notificationConfig);
+                Notification notification = NotificationFactory.NewNotification(this, notificationConfig);
 
                 if (notification == null)
                 {
@@ -96,7 +103,7 @@ namespace Radar
                     Environment.Exit(1);
                 }
 
-                notifications.Add(NotificationFactory.NewNotification(notificationConfig));
+                notifications.Add(notification);
             }
 
             lock (runningLock)
@@ -105,11 +112,13 @@ namespace Radar
                 this.startTime = DateTime.Now;
             }
 
+            new Thread(ImageManager.Start).Start();
+
             while (Running)
             {
                 foreach (Client client in clients)
                 {
-                    IEnumerable<Event> events;
+                    IEnumerable<IEvent> events;
 
                     try
                     {
@@ -122,7 +131,7 @@ namespace Radar
                         continue;
                     }
 
-                    foreach (Event eventData in events)
+                    foreach (IEvent eventData in events)
                     {
                         foreach (Notification notification in notifications)
                         {
@@ -159,6 +168,8 @@ namespace Radar
         {
             lock (runningLock)
             {
+                ImageManager.Stop();
+
                 foreach (Notification notification in notifications)
                 {
                     notification.Stop();

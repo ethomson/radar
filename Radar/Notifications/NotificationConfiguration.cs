@@ -17,6 +17,10 @@ namespace Radar.Notifications
             {
                 return ConsoleNotificationConfiguration.LoadFrom(config);
             }
+            else if (type.Equals("metro"))
+            {
+                return MetroNotificationConfiguration.LoadFrom(config);
+            }
 
             throw new Exception(String.Format("Configuration error: unknown client type {0}", type));
         }

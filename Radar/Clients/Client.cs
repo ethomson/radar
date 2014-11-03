@@ -6,11 +6,10 @@ namespace Radar.Clients
     public interface Client
     {
         ClientConfiguration Configuration { get; }
-        ITracer Tracer { get; set; }
         bool Running { get; }
         string Name { get; }
         void Start();
-        IEnumerable<Event> RecentEvents();
+        IEnumerable<IEvent> RecentEvents();
         void Stop();
     }
 }

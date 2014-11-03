@@ -5,7 +5,7 @@ namespace Radar.Notifications
     public interface Notification
     {
         NotificationConfiguration Configuration { get; }
-        void Notify(Client client, Event e);
+        void Notify(Client client, IEvent e);
         void Stop();
     }
 }

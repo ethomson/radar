@@ -10,18 +10,21 @@ namespace Radar.Clients
 {
     public class RepositoryClient : Client
     {
+        private readonly Radar radar;
         private readonly RepositoryClientConfiguration configuration;
-        private ITracer tracer;
 
         private readonly Object runningLock = new Object();
         private bool running;
         private IRepository repository;
         private RemoteRepositoryTracker tracker;
 
-        public RepositoryClient(RepositoryClientConfiguration configuration)
+        public RepositoryClient(Radar radar, RepositoryClientConfiguration configuration)
         {
+            Assert.NotNull(radar, "radar");
+            Assert.NotNull(configuration, "configuration");
+
+            this.radar = radar;
             this.configuration = configuration;
-            this.tracer = new NullTracer();
         }
 
         public ClientConfiguration Configuration
@@ -29,19 +32,6 @@ namespace Radar.Clients
             get
             {
                 return configuration;
-            }
-        }
-
-        public ITracer Tracer
-        {
-            get
-            {
-                return tracer;
-            }
-
-            set
-            {
-                tracer = value;
             }
         }
 
@@ -84,20 +74,23 @@ namespace Radar.Clients
 
                 repository = new Repository(configuration.Path);
                 tracker = new RemoteRepositoryTracker(
+                    radar.Tracer,
                     repository,
-                    SnoozedRepositoriesRetriever, ForkedRepositoriesRetriever,
-                    tracer);
+                    SnoozedRepositoriesRetriever, ForkedRepositoriesRetriever);
             }
         }
 
-        public IEnumerable<Event> RecentEvents()
+        public IEnumerable<IEvent> RecentEvents()
         {
-            var eventsRetrieval = (from mr in tracker.MonitoredRepositories
-                                   select tracker.ProbeMonitoredRepositoriesState(mr)).ToArray();
+            lock (runningLock)
+            {
+                var eventsRetrieval = (from mr in tracker.MonitoredRepositories
+                    select tracker.ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-            IEnumerable<Event>[] events = Task.WhenAll(eventsRetrieval).Result;
+                IEnumerable<IEvent>[] events = Task.WhenAll(eventsRetrieval).Result;
 
-            return events.SelectMany(evs => evs);
+                return events.SelectMany(evs => evs);
+            }
         }
 
         public void Stop()

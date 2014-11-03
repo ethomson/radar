@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 
 using Radar.Clients;
+using Radar.Images;
 using Radar.Notifications;
 using Radar.Util;
 
 namespace Radar
 {
-    public class Configuration
+    public class Configuration : ImageManagerConfiguration
     {
         private Configuration()
         {
             PollInterval = DefaultPollInterval;
+            ImageCacheDir = DefaultImageCacheDir;
 
             Clients = new List<ClientConfiguration>();
             Notifications = new List<NotificationConfiguration>();
@@ -94,6 +96,7 @@ namespace Radar
             ConfigurationParser parser = new ConfigurationParser(System.IO.File.ReadAllText(path));
 
             parser.TryExecute("poll_interval", (v) => { configuration.PollInterval = (int)v; });
+            parser.TryExecute("imageCacheDir", (v) => { configuration.ImageCacheDir = v; });
             parser.Execute("clients", (v) => { configuration.Clients = LoadClients(v); });
             parser.Execute("notifications", (v) => { configuration.Notifications = LoadNotifications(v); });
 

@@ -11,6 +11,7 @@
     <AssemblyName>Radar</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetPlatformVersion>8.0</TargetPlatformVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -39,22 +40,32 @@
       <HintPath>..\packages\Newtonsoft.Json.6.0.5\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Runtime" />
+    <Reference Include="System.Runtime.InteropServices.WindowsRuntime" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="Windows" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Clients\Client.cs" />
     <Compile Include="Clients\ClientConfiguration.cs" />
     <Compile Include="Clients\ClientFactory.cs" />
+    <Compile Include="Clients\DummyClient.cs" />
+    <Compile Include="Clients\DummyClientConfiguration.cs" />
     <Compile Include="Clients\ForkConfiguration.cs" />
     <Compile Include="Clients\RepositoryClient.cs" />
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
-    <Compile Include="Event.cs" />
+    <Compile Include="Clients\DummyEvent.cs" />
+    <Compile Include="Tracking\RepositoryEvent.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="IEvent.cs" />
+    <Compile Include="Images\ImageManagerConfiguration.cs" />
     <Compile Include="Tracking\BranchEvent.cs" />
     <Compile Include="Tracking\BranchEventKind.cs" />
     <Compile Include="EventKind.cs" />
@@ -62,27 +73,50 @@
     <Compile Include="Tracking\MonitoredRepository.cs" />
     <Compile Include="Tracking\RemoteRepositoryTracker.cs" />
     <Compile Include="Tracking\RepositoryOrigin.cs" />
-    <Compile Include="Util\ITracer.cs" />
     <Compile Include="Notifications\ConsoleNotification.cs" />
     <Compile Include="Notifications\ConsoleNotificationConfiguration.cs" />
+    <Compile Include="Notifications\MetroNotification.cs" />
+    <Compile Include="Notifications\MetroNotificationConfiguration.cs" />
     <Compile Include="Notifications\Notification.cs" />
     <Compile Include="Notifications\NotificationConfiguration.cs" />
     <Compile Include="Notifications\NotificationFactory.cs" />
     <Compile Include="Util\ConsoleTracer.cs" />
+    <Compile Include="Util\ITracer.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Util\Assert.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Radar.cs" />
+    <Compile Include="Images\ImageManager.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Util\ConfigurationException.cs" />
     <Compile Include="Util\ConfigurationParser.cs" />
     <Compile Include="Util\NullTracer.cs" />
+    <Compile Include="Util\GravatarUtil.cs" />
     <Compile Include="Util\LambdaEqualityHelper.cs" />
+    <Compile Include="Util\Resources.cs" />
+    <Compile Include="Util\ShellLink.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="Radar.config.sample">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\PersonPlaceholder.gif" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

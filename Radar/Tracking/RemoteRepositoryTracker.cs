@@ -10,39 +10,42 @@ namespace Radar.Tracking
 {
     public class RemoteRepositoryTracker
     {
-        private readonly IRepository repository;
         private readonly ITracer tracer;
+        private readonly IRepository repository;
         private readonly Func<ICollection<MonitoredRepository>> snoozedRetriever;
         private readonly Func<ICollection<MonitoredRepository>> forksRetriever;
         private readonly ConcurrentBag<MonitoredRepository> monitoredRepositories;
 
         private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> old =
-            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
         private readonly IDictionary<MonitoredRepository, Dictionary<string, string>> current =
-            new Dictionary<MonitoredRepository, Dictionary<string, string>>();
+            new ConcurrentDictionary<MonitoredRepository, Dictionary<string, string>>();
 
         public RemoteRepositoryTracker(
+            ITracer tracer,
             IRepository repository,
             Func<ICollection<MonitoredRepository>> snoozedRetriever,
-            Func<ICollection<MonitoredRepository>> forksRetriever,
-            ITracer tracer
+            Func<ICollection<MonitoredRepository>> forksRetriever
             )
         {
-            this.repository = repository;
+            Assert.NotNull(tracer, "tracer");
+            Assert.NotNull(repository, "repository");
+
             this.tracer = tracer;
+            this.repository = repository;
             this.snoozedRetriever = snoozedRetriever ?? EmptyRetriever;
             this.forksRetriever = forksRetriever ?? EmptyRetriever;
 
             monitoredRepositories = RetrieveRepositoriesToTrack().Result;
 
-            this.tracer.WriteInformation("Monitoring {0} repositories...", monitoredRepositories.Count);
+            tracer.WriteInformation("Monitoring {0} repositories...", monitoredRepositories.Count);
 
             tracer.WriteInformation("Retrieving initial state of monitored repositories...");
 
             var eventsRetrieval = (from mr in monitoredRepositories
                                      select ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-            Task.WhenAll(eventsRetrieval);
+            Task.WhenAll(eventsRetrieval).Wait();
         }
 
         public IEnumerable<MonitoredRepository> MonitoredRepositories
@@ -50,7 +53,7 @@ namespace Radar.Tracking
             get { return monitoredRepositories.ToArray(); }
         }
 
-        public async Task<IEnumerable<Event>> ProbeMonitoredRepositoriesState(MonitoredRepository mr)
+        public async Task<IEnumerable<IEvent>> ProbeMonitoredRepositoriesState(MonitoredRepository mr)
         {
             return await Task.Run(() =>
             {
@@ -81,18 +84,13 @@ namespace Radar.Tracking
             var remoteTips = RetrieveRemoteTips(monitoredRepository);
 
             return remoteTips
-                .Where(kvp => IsHeadOrTag(kvp.Key))
+                .Where(kvp => IsHead(kvp.Key))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        private bool IsHeadOrTag(string refName)
+        private bool IsHead(string refName)
         {
             if (refName.StartsWith("refs/heads/"))
-            {
-                return true;
-            }
-
-            if (refName.StartsWith("refs/tags/"))
             {
                 return true;
             }
@@ -120,13 +118,13 @@ namespace Radar.Tracking
             var events = new List<BranchEvent>();
 
             events.AddRange(newBranches
-                .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created)));
+                .Select(kvp => new BranchEvent(kvp.Key, null, kvp.Value, BranchEventKind.Created, CommitSignatureRetriever)));
 
             events.AddRange(modifiedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated)));
+                .Select(kvp => new BranchEvent(kvp.Key, oldState[kvp.Key], kvp.Value, BranchEventKind.Updated, CommitSignatureRetriever)));
 
             events.AddRange(droppedBranches
-                .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted)));
+                .Select(kvp => new BranchEvent(kvp.Key, kvp.Value, null, BranchEventKind.Deleted, null)));
 
             if (events.Count == 0)
             {
@@ -161,15 +159,13 @@ namespace Radar.Tracking
                     continue;
                 }
 
-                branchEvent.MarkAsUpdatedBranchToAKnownCommit();
+                branchEvent.MarkAsResetBranchToAKnownCommit();
             }
         }
 
-        private IEnumerable<Event> Synchronise(MonitoredRepository mr, BranchEvent[] branchEvents)
+        private IEnumerable<IEvent> Synchronise(MonitoredRepository mr, BranchEvent[] branchEvents)
         {
             RemoveReferences(string.Format("refs/radar/{0}/*", mr.FriendlyName));
-
-            var events = new List<Event>();
 
             var refspecs = branchEvents
                 .Where(be => be.Kind != BranchEventKind.Deleted)
@@ -183,39 +179,14 @@ namespace Radar.Tracking
                 FetchCommitsFrom(mr, refspecs);
             }
 
-            var toBeDeleted = branchEvents
-                .Where(be => be.Kind == BranchEventKind.Deleted);
-
-            foreach (var branchEvent in toBeDeleted)
-            {
-                var ev = branchEvent.BuildEvent(mr);
-                ev.Time = DateTime.Now;
-
-                // TODO: Which identity should we use when a branch is deleted
-                ev.Identity = new Identity{ Name = "Unknown", Email = "dont@know.com" };
-
-                events.Add(ev);
-            }
-
             foreach (var branchEvent in branchEvents.Where(b => !b.IsFullyAnalyzed))
             {
                 var result = RetrieveListOfCommittedShas(branchEvent);
 
-                branchEvent.MarkWithNewCommits(result.Item1, result.Item2);
+                branchEvent.MarkAsUpdatedBranchWithNewCommits(result.Item1, result.Item2);
             }
 
-            foreach (var branchEvent in branchEvents.Where(be => be.Kind != BranchEventKind.Deleted))
-            {
-                var ev = branchEvent.BuildEvent(mr);
-
-                // TODO: Retrieve identity of committers and commit times
-                ev.Time = DateTime.Now;
-                ev.Identity = new Identity { Name = "S. Omeone", Email = "someone@somewhere.com" };
-
-                events.Add(ev);
-            }
-
-            return events;
+            return branchEvents.Select(branchEvent => branchEvent.BuildEvent(mr)).ToList();
         }
 
         private async Task<ConcurrentBag<MonitoredRepository>> RetrieveRepositoriesToTrack()
@@ -236,17 +207,74 @@ namespace Radar.Tracking
             return new MonitoredRepository[] { };
         }
 
-        #region Git repository related interactions
-
         private Tuple<bool, string[]> RetrieveListOfCommittedShas(BranchEvent branchEvent)
         {
-            var @old = repository.Lookup<Commit>(branchEvent.OldSha);
-            var @new = repository.Lookup<Commit>(branchEvent.NewSha);
+            string oldSha = branchEvent.OldSha;
 
-            var merge = repository.Commits.FindMergeBase(@old, @new);
-            var shas = repository.Commits.QueryBy(new CommitFilter {Since = @new, Until = @old}).Select(c => c.Sha).ToArray();
+            if (oldSha == null)
+            {
+                oldSha = RetrieveParentOfFirstUnknownCommitShaOnBranch(branchEvent.NewSha);
+            }
 
-            return new Tuple<bool, string[]>(merge == null || merge != old, shas);
+            var isOldShaCommitLocallyKnown = IsCommitLocallyKnown(oldSha);
+
+            var shas = RetrieveCommitShasOnBranchBetween(branchEvent.NewSha, isOldShaCommitLocallyKnown ? oldSha : null);
+
+            bool isForcedPushed = false;
+
+
+            if (isOldShaCommitLocallyKnown)
+            {
+                isForcedPushed = IsForcedPushed(branchEvent.NewSha, oldSha);
+            }
+
+            return new Tuple<bool, string[]>(isForcedPushed, shas);
+        }
+
+        private string RetrieveParentOfFirstUnknownCommitShaOnBranch(string newBranchCommitSha)
+        {
+            var firstUnknownCommitShaOnBranch = RetrieveFirstUnknownCommitShaOnBranch(newBranchCommitSha);
+
+            return firstUnknownCommitShaOnBranch + "^";
+        }
+
+        #region Git repository related interactions
+
+        private bool IsForcedPushed(string newTipSha, string oldTipSha)
+        {
+            var oldTip = repository.Lookup<Commit>(oldTipSha);
+            var newTip = repository.Lookup<Commit>(newTipSha);
+
+            var merge = repository.Commits.FindMergeBase(oldTip, newTip);
+
+            bool isForcedPushed = merge == null || merge != oldTip;
+
+            return isForcedPushed;
+        }
+
+        private string[] RetrieveCommitShasOnBranchBetween(string since, string until)
+        {
+            return repository.Commits
+                .QueryBy(new CommitFilter { Since = since, Until = until })
+                .Select(c => c.Sha)
+                .ToArray();
+        }
+
+        private string RetrieveFirstUnknownCommitShaOnBranch(string branchTipSha)
+        {
+            return repository.Commits
+                .QueryBy(new CommitFilter { Since = branchTipSha, Until = repository.Branches })
+                .Last()
+                .Sha;
+        }
+
+        private Tuple<Identity, DateTime> CommitSignatureRetriever(string commitSha)
+        {
+            var c = repository.Lookup<Commit>(commitSha);
+
+            return new Tuple<Identity, DateTime>(
+                new Identity { Name = c.Committer.Name, Email = c.Committer.Email }
+                , c.Committer.When.LocalDateTime);
         }
 
         private bool IsCommitLocallyKnown(string sha)

@@ -10,8 +10,9 @@ namespace Radar.Notifications
     {
         private ConsoleNotificationConfiguration configuration;
 
-        public ConsoleNotification(ConsoleNotificationConfiguration configuration)
+        public ConsoleNotification(Radar radar, ConsoleNotificationConfiguration configuration)
         {
+            Assert.NotNull(radar, "radar");
             Assert.NotNull(configuration, "configuration");
 
             this.configuration = configuration;
@@ -25,13 +26,21 @@ namespace Radar.Notifications
             }
         }
 
-        public void Notify(Client client, Event e)
+        public void Notify(Client client, IEvent e)
         {
             TextWriter fh = configuration.Stream == ConsoleNotificationConfiguration.ConsoleStream.Output ?
                 Console.Out : Console.Error;
 
-            fh.WriteLine("{0}: {1} {2} <{3}>: {4} {5} {6} [{7}]",
-                client.Name, e.Time, e.Identity.Name, e.Identity.Email, e.RepositoryFriendlyName, e.Kind, e.BranchName, string.Join(", ", e.Shas));
+            if (e.Identity is NullIdentity)
+            {
+                fh.WriteLine("{0} - {1} : {2}",
+                client.Name, e.Time, e.Content);
+            }
+            else
+            {
+                fh.WriteLine("{0} - {1} : ({2} <{3}>) {4}",
+                client.Name, e.Time, e.Identity.Name, e.Identity.Email, e.Content);
+            }
         }
 
         public void Stop()
