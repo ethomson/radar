@@ -74,20 +74,20 @@ namespace Radar.Clients
 
                 repository = new Repository(configuration.Path);
                 tracker = new RemoteRepositoryTracker(
-                    radar,
+                    radar.Tracer,
                     repository,
                     SnoozedRepositoriesRetriever, ForkedRepositoriesRetriever);
             }
         }
 
-        public IEnumerable<Event> RecentEvents()
+        public IEnumerable<IEvent> RecentEvents()
         {
             lock (runningLock)
             {
                 var eventsRetrieval = (from mr in tracker.MonitoredRepositories
                     select tracker.ProbeMonitoredRepositoriesState(mr)).ToArray();
 
-                IEnumerable<Event>[] events = Task.WhenAll(eventsRetrieval).Result;
+                IEnumerable<IEvent>[] events = Task.WhenAll(eventsRetrieval).Result;
 
                 return events.SelectMany(evs => evs);
             }

@@ -2,7 +2,7 @@
 
 namespace Radar.Util
 {
-    public static class Assert
+    internal static class Assert
     {
         public static void IsTrue(bool value, string name)
         {

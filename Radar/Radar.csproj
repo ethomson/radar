@@ -61,8 +61,10 @@
     <Compile Include="Clients\ForkConfiguration.cs" />
     <Compile Include="Clients\RepositoryClient.cs" />
     <Compile Include="Clients\RepositoryClientConfiguration.cs" />
-    <Compile Include="Event.cs" />
+    <Compile Include="Clients\DummyEvent.cs" />
+    <Compile Include="Tracking\RepositoryEvent.cs" />
     <Compile Include="Identity.cs" />
+    <Compile Include="IEvent.cs" />
     <Compile Include="Images\ImageManagerConfiguration.cs" />
     <Compile Include="Tracking\BranchEvent.cs" />
     <Compile Include="Tracking\BranchEventKind.cs" />

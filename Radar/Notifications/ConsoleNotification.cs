@@ -26,7 +26,7 @@ namespace Radar.Notifications
             }
         }
 
-        public void Notify(Client client, Event e)
+        public void Notify(Client client, IEvent e)
         {
             TextWriter fh = configuration.Stream == ConsoleNotificationConfiguration.ConsoleStream.Output ?
                 Console.Out : Console.Error;

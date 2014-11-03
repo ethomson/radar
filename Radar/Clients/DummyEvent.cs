@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Radar
+namespace Radar.Clients
 {
-    public class Event
+    class DummyEvent : IEvent
     {
         public Identity Identity { get; internal set; }
         public DateTime Time { get; internal set; }

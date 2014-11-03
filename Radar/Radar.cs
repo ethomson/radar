@@ -118,7 +118,7 @@ namespace Radar
             {
                 foreach (Client client in clients)
                 {
-                    IEnumerable<Event> events;
+                    IEnumerable<IEvent> events;
 
                     try
                     {
@@ -131,7 +131,7 @@ namespace Radar
                         continue;
                     }
 
-                    foreach (Event eventData in events)
+                    foreach (IEvent eventData in events)
                     {
                         foreach (Notification notification in notifications)
                         {
